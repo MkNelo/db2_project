@@ -1,0 +1,299 @@
+use self::api::WVLazyApi;
+use self::container::WVDataContainer;
+use self::{
+    api::WebViewApi,
+    container::{WVContainer, WVPreContainer},
+};
+use super::context::SpawnerFactory;
+use super::middleware::none;
+use super::middleware::Middleware;
+use super::{Api, Application, BoxedApi};
+use futures::lock::Mutex;
+use futures::{future::BoxFuture, task::Spawn, Future, FutureExt};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::any::Any;
+use std::any::TypeId;
+use std::sync::Arc;
+use std::{collections::HashMap, fmt::Display};
+use web_view::{Content, WVResult, WebView};
+
+mod api;
+pub(crate) mod container;
+pub mod middleware;
+
+#[derive(Deserialize)]
+pub struct InvokeBody {
+    pub(crate) api_name: String,
+    pub(crate) payload: Value,
+}
+
+pub struct InvokeRequest {
+    pub(crate) body: InvokeBody,
+    pub(crate) container: WVDataContainer,
+}
+
+impl InvokeRequest {
+    pub fn container(&self) -> WVDataContainer {
+        self.container.clone()
+    }
+
+    pub fn body(&self) -> &InvokeBody {
+        &self.body
+    }
+}
+
+impl InvokeBody {pub fn api_name(&self) -> &String {
+        &self.api_name
+    }
+
+    pub fn payload(&self) -> &'_ Value {
+        &self.payload
+    }
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum ApiResponse {
+    OpResponse {
+        api_name: String,
+        #[serde(flatten)]
+        body: ApiResponseBody,
+    },
+    OpDoNothing(String),
+}
+
+impl ApiResponse {
+    pub fn body(&self) -> String {
+        match self {
+            ApiResponse::OpDoNothing(ref name) => format!("[api_name = {}]", name),
+            ApiResponse::OpResponse {
+                api_name: _,
+                body:
+                    ApiResponseBody {
+                        ref payload,
+                        error: _,
+                    },
+            } => serde_json::to_string(payload).unwrap(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct ApiResponseBody {
+    pub(crate) error: bool,
+    pub(crate) payload: Option<Value>,
+}
+
+pub trait Response
+where
+    Self: Future + Send,
+    Self::Output: Serialize + Send,
+{
+    fn into_response(self) -> BoxFuture<'static, Option<ApiResponseBody>>;
+}
+
+pub trait Message: for<'de> Deserialize<'de> {
+    fn from_message(m: &InvokeRequest) -> Option<Self>;
+}
+
+impl<T> Message for T
+where
+    T: for<'de> Deserialize<'de>,
+{
+    fn from_message(m: &InvokeRequest) -> Option<Self> {
+        serde_json::from_value(m.body().payload().clone()).ok()
+    }
+}
+
+impl<T> Response for T
+where
+    T: Future + std::marker::Send + 'static,
+    T::Output: Serialize + Send + 'static,
+{
+    fn into_response(self) -> BoxFuture<'static, Option<ApiResponseBody>> {
+        self.then(|future| async {
+            let value = serde_json::to_value(future).unwrap();
+            match &value {
+                Value::Object(map) if map.contains_key("Ok") => ApiResponseBody {
+                    error: false,
+                    payload: value.into(),
+                }
+                .into(),
+                Value::Object(map) if map.contains_key("Err") => ApiResponseBody {
+                    error: true,
+                    payload: value.into(),
+                }
+                .into(),
+                Value::Null => None,
+                _ => ApiResponseBody {
+                    error: false,
+                    payload: value.into(),
+                }
+                .into(),
+            }
+        })
+        .boxed()
+    }
+}
+
+pub(crate) type ApiContainer =
+    HashMap<&'static str, BoxedApi<InvokeRequest, BoxFuture<'static, ApiResponse>>>;
+
+pub(crate) type DataContainer = HashMap<TypeId, Arc<dyn Any + Send + Sync + 'static>>;
+
+pub struct WebViewApp<
+    'a,
+    Cont,
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + 'static,
+    Context: SpawnerFactory,
+> {
+    container: WVPreContainer<Mid>,
+    webview_builder: web_view::WebViewBuilder<
+        'a,
+        WVContainer<Mid, Context::Spawner>,
+        Box<dyn FnMut(&mut WebView<WVContainer<Mid, Context::Spawner>>, &str) -> WVResult + 'a>,
+        Cont,
+    >,
+    context: Context,
+    data_container: DataContainer,
+}
+
+impl<'a, Cont, Mid, Context> WebViewApp<'a, Cont, Mid, Context>
+where
+    Cont: AsRef<str>,
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>>,
+    Context: SpawnerFactory,
+{
+    pub fn content(mut self, content: Content<Cont>) -> Self {
+        self.webview_builder = self.webview_builder.content(content);
+
+        self
+    }
+
+    pub fn title<'b: 'a>(mut self, title: &'b str) -> Self {
+        self.webview_builder = self.webview_builder.title(title);
+
+        self
+    }
+
+    pub fn frameless(mut self, value: bool) -> Self {
+        self.webview_builder = self.webview_builder.frameless(value);
+
+        self
+    }
+
+    pub fn size(mut self, (width, height): (usize, usize)) -> Self {
+        self.webview_builder = self.webview_builder.size(width as i32, height as i32);
+        self
+    }
+}
+
+pub fn webview_api<API>(api_key: &'static str, api: API) -> WebViewApi<API> {
+    WebViewApi { api, api_key }
+}
+
+pub fn lazy<Factory, Fut, API>(key: &'static str, f: Factory) -> WVLazyApi<Factory, API>
+where
+    Factory: Fn(&mut InvokeRequest) -> Fut,
+    Fut: Future<Output = API>
+{
+    WVLazyApi::new(f, key)
+}
+
+#[derive(Debug)]
+struct NoneError(String);
+
+impl Display for NoneError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+fn message_processing<'a, Mid, Spawner>(
+    webview: &mut WebView<WVContainer<Mid, Spawner>>,
+    arg: &str,
+) -> WVResult
+where
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + 'static,
+    Spawner: Spawn + 'static,
+    'a: 'static,
+{
+    let invoke_body: InvokeBody = serde_json::from_str(arg).unwrap();
+    let api_name = invoke_body.api_name.clone();
+    let container = webview.user_data();
+    let shared_webview = webview.handle();
+    let request = InvokeRequest {
+        body: invoke_body,
+        container: container.data(),
+    };
+
+    if let Some(api) = container.get(api_name) {
+        let computation = container
+            .solve_with_middleware(request, api)
+            .then(move |response| {
+                futures::future::ready({
+                    match response {
+                        ApiResponse::OpDoNothing(_) => {}
+                        x => {
+                            let json_response = serde_json::to_string(&x).unwrap();
+
+                            shared_webview
+                                .dispatch(move |wv| {
+                                    wv.eval(&format!("sendToElm({})", &json_response))
+                                })
+                                .ok();
+                        }
+                    }
+                })
+            });
+
+        container.dispatch(computation).ok();
+    }
+
+    Ok(())
+}
+
+impl<'a, Cont, Mid, Context> Application for WebViewApp<'a, Cont, Mid, Context>
+where
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + Send,
+    Cont: AsRef<str>,
+    Context: SpawnerFactory + 'static,
+{
+    type Result = Result<WebView<'a, WVContainer<Mid, Context::Spawner>>, web_view::Error>;
+
+    fn finish(mut self) -> Self::Result {
+        let message_callback = Box::new(message_processing);
+        self.webview_builder = self
+            .webview_builder
+            .user_data(self.container.resolve_middleware(
+                self.context.spawner(),
+                Arc::new(Mutex::new(self.data_container)),
+            ))
+            .invoke_handler(message_callback);
+
+        self.webview_builder.build()
+    }
+}
+
+pub fn builder<Context>(
+    f: Context,
+) -> WebViewApp<
+    'static,
+    String,
+    impl Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>>,
+    Context,
+>
+where
+    Context: SpawnerFactory,
+{
+    WebViewApp {
+        webview_builder: web_view::builder(),
+        container: WVPreContainer {
+            api_container: HashMap::new(),
+            middleware_container: none(),
+        },
+        context: f,
+        data_container: HashMap::new(),
+    }
+}
