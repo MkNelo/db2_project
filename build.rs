@@ -6,6 +6,7 @@ fn format_to_target<S: AsRef<str>>(path: S) -> String {
     format!("{}/{}", TARGET_PATH, path.as_ref())
 }
 
+// this comment
 fn main() {
     println!("cargo:rerun-if-changed=src/*");
     println!("cargo:rerun-if-changed={}/*", TARGET_PATH);
