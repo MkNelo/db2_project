@@ -3,8 +3,8 @@ use std::any::TypeId;
 use std::sync::Arc;
 
 use futures::future::ready;
-use futures::FutureExt;
 use futures::lock::Mutex;
+use futures::FutureExt;
 use futures::{
     future::BoxFuture,
     task::{Spawn, SpawnError, SpawnExt},
@@ -60,19 +60,16 @@ impl WVDataContainer {
         let mut handle = true_container.lock().await;
         if handle.contains_key(&id) {
             let ptr = handle.get(&id).unwrap().clone();
-            ready(ptr.downcast().unwrap())
-                .left_future()
-        }
-        else
-        {
-            f()
-                .map(|f| Arc::new(f))
+            ready(ptr.downcast().unwrap()).left_future()
+        } else {
+            f().map(|f| Arc::new(f))
                 .then(|r| {
                     handle.insert(id, r.clone());
                     ready(r)
                 })
                 .right_future()
-        }.await
+        }
+        .await
     }
 }
 

@@ -43,7 +43,8 @@ impl InvokeRequest {
     }
 }
 
-impl InvokeBody {pub fn api_name(&self) -> &String {
+impl InvokeBody {
+    pub fn api_name(&self) -> &String {
         &self.api_name
     }
 
@@ -196,7 +197,7 @@ pub fn webview_api<API>(api_key: &'static str, api: API) -> WebViewApi<API> {
 pub fn lazy<Factory, Fut, API>(key: &'static str, f: Factory) -> WVLazyApi<Factory, API>
 where
     Factory: Fn(&mut InvokeRequest) -> Fut,
-    Fut: Future<Output = API>
+    Fut: Future<Output = API>,
 {
     WVLazyApi::new(f, key)
 }
@@ -219,39 +220,41 @@ where
     Spawner: Spawn + 'static,
     'a: 'static,
 {
-    let invoke_body: InvokeBody = serde_json::from_str(arg).unwrap();
-    let api_name = invoke_body.api_name.clone();
-    let container = webview.user_data();
-    let shared_webview = webview.handle();
-    let request = InvokeRequest {
-        body: invoke_body,
-        container: container.data(),
-    };
+    serde_json::from_str(arg).and_then(|invoke_body: InvokeBody| {
+        let api_name = invoke_body.api_name.clone();
+        let container = webview.user_data();
+        let shared_webview = webview.handle();
+        let request = InvokeRequest {
+            body: invoke_body,
+            container: container.data(),
+        };
 
-    if let Some(api) = container.get(api_name) {
-        let computation = container
-            .solve_with_middleware(request, api)
-            .then(move |response| {
-                futures::future::ready({
-                    match response {
-                        ApiResponse::OpDoNothing(_) => {}
-                        x => {
-                            let json_response = serde_json::to_string(&x).unwrap();
+        if let Some(api) = container.get(api_name) {
+            let computation = container
+                .solve_with_middleware(request, api)
+                .then(move |response| {
+                    futures::future::lazy(move |_| {
+                        match response {
+                            ApiResponse::OpDoNothing(_) => {}
+                            x => {
+                                let json_response = serde_json::to_string(&x).unwrap();
 
-                            shared_webview
-                                .dispatch(move |wv| {
-                                    wv.eval(&format!("sendToElm({})", &json_response))
-                                })
-                                .ok();
+                                shared_webview
+                                    .dispatch(move |wv| {
+                                        wv.eval(&format!("sendToElm({})", &json_response))
+                                    })
+                                    .ok();
+                            }
                         }
-                    }
-                })
-            });
+                    })
+                });
 
-        container.dispatch(computation).ok();
-    }
+            container.dispatch(computation).ok();
+        }
 
-    Ok(())
+        Ok(())
+    })
+    .map_err(|ejson| web_view::Error::custom(ejson))
 }
 
 impl<'a, Cont, Mid, Context> Application for WebViewApp<'a, Cont, Mid, Context>

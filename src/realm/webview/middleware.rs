@@ -43,8 +43,7 @@ where
     WVFMiddleware(adhoc(mid))
 }
 
-impl<Cont, Mid, OMid, Context> LoadMiddleware<Mid>
-    for WebViewApp<'static, Cont, OMid, Context>
+impl<Cont, Mid, OMid, Context> LoadMiddleware<Mid> for WebViewApp<'static, Cont, OMid, Context>
 where
     OMid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>>,
     Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + 'static,

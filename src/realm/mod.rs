@@ -162,7 +162,11 @@ mod tests {
             .into_iter()
             .map(|future| executor.block_on(future).unwrap())
             .flat_map(|result| {
-                if let ApiResponse::OpResponse { api_name: _, body: ApiResponseBody { payload, error: _ } } = result {
+                if let ApiResponse::OpResponse {
+                    api_name: _,
+                    body: ApiResponseBody { payload, error: _ },
+                } = result
+                {
                     Some::<i32>(serde_json::from_value(payload.unwrap()).unwrap())
                 } else {
                     None

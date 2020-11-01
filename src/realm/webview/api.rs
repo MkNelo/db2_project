@@ -86,8 +86,7 @@ where
 
 pub struct WVLazyApi<Factory, API>(Arc<Factory>, Arc<Mutex<Option<API>>>, &'static str);
 
-impl<Factory, API> WVLazyApi<Factory, API>
-{
+impl<Factory, API> WVLazyApi<Factory, API> {
     pub fn new(f: Factory, key: &'static str) -> Self {
         WVLazyApi(Arc::new(f), Arc::new(Mutex::new(None)), key)
     }
@@ -115,31 +114,35 @@ where
         async move {
             let mut cell = ptr.lock().await;
             let operation = if cell.is_none() {
-                factory(&mut msg)
-                    .map(Some)
-                    .right_future()
+                factory(&mut msg).map(Some).right_future()
+            } else {
+                ready(None).left_future()
             }
-            else {
-                ready(None)
-                    .left_future()
-            }.await;
+            .await;
             if let Some(api) = operation {
                 cell.replace(api);
             }
             message
-                .map(|msg| cell.as_ref()
-                     .unwrap()
-                     .handle(msg)
-                     .into_response()
-                     .then(|body| ready(match body {
-                         Some(body) => ApiResponse::OpResponse { api_name: api_name.clone(), body },
-                         None => ApiResponse::OpDoNothing(api_name)
-                     }))
-                     .right_future()
-                )
+                .map(|msg| {
+                    cell.as_ref()
+                        .unwrap()
+                        .handle(msg)
+                        .into_response()
+                        .then(|body| {
+                            ready(match body {
+                                Some(body) => ApiResponse::OpResponse {
+                                    api_name: api_name.clone(),
+                                    body,
+                                },
+                                None => ApiResponse::OpDoNothing(api_name),
+                            })
+                        })
+                        .right_future()
+                })
                 .unwrap_or_else(|| ready(ApiResponse::OpDoNothing(api_f_name)).left_future())
                 .await
-        }.boxed()
+        }
+        .boxed()
     }
 }
 
