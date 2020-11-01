@@ -15,7 +15,7 @@ management, TCP/UDP Socket manipulation, etc.
 
     {
         "api_name" [String]: The name of the api to invoke,
-        "payload" [Object][^1]: The message that the Api must process
+        "payload" [Object]: The message that the Api must process
     }
 
   The response structure must be:
@@ -26,7 +26,7 @@ management, TCP/UDP Socket manipulation, etc.
         "body" [Object]: The message processing's result
     }
     
-[^1]: Must be in JSON notation
+  *Note: [Object] Must be in JSON notation*
 
 ## Asynchronous dispatch 
     
