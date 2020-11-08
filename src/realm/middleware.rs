@@ -1,5 +1,4 @@
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
 
 pub trait Middleware {
     type Message;

@@ -3,11 +3,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate tokio_postgres;
 
-use std::sync::Arc;
-use std::sync::Mutex;
-
 use realm::prelude::*;
-use tokio_postgres::Client;
 use tokio_postgres::NoTls;
 
 async fn add2(msg: i32) -> i32 {

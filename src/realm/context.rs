@@ -46,7 +46,6 @@ impl SpawnerFactory for TokioBuilder {
 
     fn spawner(&mut self) -> Self::Spawner {
         self.0
-            .max_threads(16)
             .worker_threads(4)
             .thread_name("Realm Thread")
             .enable_all()

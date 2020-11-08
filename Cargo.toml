@@ -19,7 +19,7 @@ web-view = { version = "0.6.3", features = ["edge"] }
 serde = { version = "*", features = ["derive"] }
 tokio-postgres = { version = "*" }
 serde_json = { version = "*" }
-tokio = { version = "*", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "*", features = ["rt", "rt-multi-thread", "sync"] }
 env_logger = { version = "0.7.1" }
 log = { version = "0.4.11" }
 dotenv = { version = "0.15.0" }
