@@ -1,13 +1,14 @@
 use futures::future::pending;
 use serde::Serialize;
-use tokio_postgres::Statement;
-use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use tokio::{sync::RwLock};
+use std::time::Duration;
+use std::{collections::HashMap, pin::Pin};
+use tokio::sync::RwLock;
 use tokio_postgres::Client;
 use tokio_postgres::NoTls;
+use tokio_postgres::Statement;
 
 use super::container::WVDataContainer;
 use crate::prelude::*;
@@ -42,7 +43,7 @@ impl ApiS {
             count: Arc::new(From::from(0)),
         }
     }
-    
+
     async fn respond(atomic: Arc<AtomicUsize>, msg: i32) -> i32 {
         let response = msg + 5;
         let countf = atomic.load(Ordering::Relaxed);
@@ -51,7 +52,7 @@ impl ApiS {
             tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
         }
         atomic.fetch_add(1, Ordering::Release);
-        
+
         println!(
             "Responding at: {:?}, with count: {count}",
             std::time::Instant::now().duration_since(start),
@@ -64,7 +65,7 @@ impl ApiS {
 impl Api for ApiS {
     type Message = i32;
     type Response = BoxFuture<'static, i32>;
-    
+
     fn handle(&self, msg: Self::Message) -> Self::Response {
         Self::respond(self.count.clone(), msg).boxed()
     }
@@ -74,20 +75,20 @@ pub fn lazy_apis(request: &mut InvokeRequest) -> impl Future<Output = ApiS> {
     let mut container = request.container();
     async move {
         container
-        .get_or_register(|| async {
-            let (client, _) = tokio_postgres::connect(
-                "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
-                NoTls,
-            )
+            .get_or_register(|| async {
+                let (client, _) = tokio_postgres::connect(
+                    "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
+                    NoTls,
+                )
+                .await
+                .unwrap();
+                client
+            })
+            .then(move |client| {
+                println!("client invoked");
+                ready(ApiS::new(client))
+            })
             .await
-            .unwrap();
-            client
-        })
-        .then(move |client| {
-            println!("client invoked");
-            ready(ApiS::new(client))
-        })
-        .await
     }
 }
 
@@ -95,55 +96,56 @@ pub fn lazy_api_query(request: &mut InvokeRequest) -> impl Future<Output = ApiQu
     let mut container = request.container();
     async move {
         container
-        .get_or_register(|| async {
-            let (client, conn) = tokio_postgres::connect(
-                "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
-                NoTls,
-            )
+            .get_or_register(|| async {
+                let (client, conn) = tokio_postgres::connect(
+                    "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
+                    NoTls,
+                )
+                .await
+                .unwrap();
+                tokio::spawn(async move {
+                    println!("Conexión establecida");
+                    if let Err(e) = conn.await {
+                        eprintln!("Connection error: {}", e)
+                    }
+                });
+                client
+            })
+            .then(move |client| {
+                println!("client invoked");
+                ApiQuerier::new(client)
+            })
             .await
-            .unwrap();
-            tokio::spawn(async move {
-                println!("Conexión establecida");
-                if let Err(e) = conn.await {
-                    eprintln!("Connection error: {}", e)
-                }
-            });
-            client
-        })
-        .then(move |client| {
-            println!("client invoked");
-            ApiQuerier::new(client)
-        })
-        .await
     }
 }
 
 pub struct ApiQuerier {
     arc: Arc<Client>,
-    delegate: Statement
+    delegate: Statement,
 }
 
 impl ApiQuerier {
     pub async fn new(arc: Arc<Client>) -> Self {
         ApiQuerier {
             delegate: arc.prepare("SELECT * FROM DummyTable").await.unwrap(),
-            arc
+            arc,
         }
     }
-    
+
     async fn query(x: i32, arc: Arc<Client>, statement: Statement) -> String {
         let start = std::time::Instant::now();
         if x % 2 == 0 {
-            pending::<()>().await
+            tokio::time::sleep(Duration::from_millis(1000)).await;
         }
-        let value = arc.query(&statement, &[])
-        .await
-        .unwrap()
-        .into_iter()
-        .nth(x as usize % 3)
-        .unwrap()
-        .get::<_, &str>(1)
-        .into();
+        let value = arc
+            .query(&statement, &[])
+            .await
+            .unwrap()
+            .into_iter()
+            .nth(x as usize % 3)
+            .unwrap()
+            .get::<_, &str>(1)
+            .into();
         println!(
             "Responding at: {:?}, with value: {value}, with count: {count}",
             std::time::Instant::now().duration_since(start),
@@ -156,9 +158,9 @@ impl ApiQuerier {
 
 impl Api for ApiQuerier {
     type Message = i32;
-    
+
     type Response = BoxFuture<'static, String>;
-    
+
     fn handle(&self, x: Self::Message) -> Self::Response {
         let clone = self.arc.clone();
         let stat = self.delegate.clone();

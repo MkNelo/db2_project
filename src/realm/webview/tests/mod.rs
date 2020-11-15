@@ -27,8 +27,7 @@ fn lazy_api_query_works() {
     let mut spawns = Vec::with_capacity(20);
     
     let container = container_factory();
-    
-    
+
     for x in 0..100 {
         let container_clone = container.clone();
         spawns.push(executor.spawn(
