@@ -1,0 +1,23 @@
+[package]
+name = "db2-project-reports"
+version = "0.1.0"
+authors = ["syfers"]
+edition = "2018"
+
+[lib]
+name = "db2_project_reports"
+path = "lib.rs"
+
+[dependencies]
+report-macros = { path = "macros" }
+realm = { path = "../realm" }
+serde = { version = "*", features = ["derive"] }
+tokio-postgres = { version = "*" }
+serde_json = { version = "*" }
+env_logger = { version = "0.7.1" }
+log = { version = "0.4.11" }
+dotenv = { version = "0.15.0" }
+futures = { version = "*" }
+
+[dev-dependencies]
+tokio = { version = "*", features = ["rt", "rt-multi-thread"] }

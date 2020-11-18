@@ -20,6 +20,7 @@ use web_view::{Content, WVResult, WebView};
 mod api;
 pub(crate) mod container;
 pub mod middleware;
+#[cfg(tests)]
 mod tests;
 
 #[derive(Deserialize)]

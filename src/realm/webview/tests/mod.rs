@@ -2,7 +2,6 @@ use std::sync::Arc;
 use crate::prelude::*;
 mod helper;
 use futures::future::{join_all, pending};
-use helper::*;
 use tokio::{runtime::Runtime, spawn};
 
 #[test]
@@ -22,7 +21,7 @@ fn lazy_container_works() {
 
 #[test]
 fn lazy_api_query_works() {
-    let lazy_api = lazy("api/load", lazy_api_query);
+    let ref lazy_api = lazy("api/load", lazy_api_query);
     let executor = Runtime::new().unwrap();
     let mut spawns = Vec::with_capacity(20);
     
@@ -31,7 +30,7 @@ fn lazy_api_query_works() {
     for x in 0..100 {
         let container_clone = container.clone();
         spawns.push(executor.spawn(
-            lazy_api.handle(full_request(x, container_clone))
+            (lazy_api).handle(full_request(x, container_clone))
         ));
     }
 

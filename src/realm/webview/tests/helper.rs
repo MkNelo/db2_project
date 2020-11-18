@@ -1,10 +1,9 @@
-use futures::future::pending;
 use serde::Serialize;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 use tokio::sync::RwLock;
 use tokio_postgres::Client;
 use tokio_postgres::NoTls;
@@ -164,6 +163,6 @@ impl Api for ApiQuerier {
     fn handle(&self, x: Self::Message) -> Self::Response {
         let clone = self.arc.clone();
         let stat = self.delegate.clone();
-        Self::query(x, clone, stat).boxed()
+        ApiQuerier::query(x, clone, stat).boxed()
     }
 }

@@ -2,6 +2,7 @@ extern crate realm;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio_postgres;
+extern crate db2_project_reports;
 
 use realm::prelude::*;
 use tokio_postgres::NoTls;

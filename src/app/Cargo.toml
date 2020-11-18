@@ -1,0 +1,21 @@
+[package]
+name = "db2-client-application"
+version = "0.1.0"
+authors = ["syfers"]
+edition = "2018"
+
+[[bin]]
+name = "db2_client_application"
+path = "main.rs"
+build = "build.rs"
+
+[dependencies]
+realm = { path = "../realm" }
+db2-project-reports = { path = "../reports" }
+serde = { version = "*", features = ["derive"] }
+tokio-postgres = { version = "*" }
+serde_json = { version = "*" }
+env_logger = { version = "0.7.1" }
+log = { version = "0.4.11" }
+dotenv = { version = "0.15.0" }
+futures = { version = "*" }
