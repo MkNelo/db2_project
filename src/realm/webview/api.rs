@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use super::super::middleware::Middleware;
 use super::InvokeRequest;
@@ -18,14 +18,14 @@ pub struct WebViewApi<'a, API: 'a> {
 
 impl<'a, API> Api for (&'a str, API)
 where
-API: Api,
-API::Response: Future + Send + 'a,
-<API::Response as Future>::Output: Serialize + Send + 'a,
-API::Message: Message,
+    API: Api,
+    API::Response: Future + Send + 'a,
+    <API::Response as Future>::Output: Serialize + Send + 'a,
+    API::Message: Message,
 {
     type Message = API::Message;
     type Response = API::Response;
-    
+
     fn handle(&self, msg: Self::Message) -> Self::Response {
         let (_, ref api) = self;
         api.handle(msg)
@@ -34,46 +34,47 @@ API::Message: Message,
 
 impl<'a, API> Api for WebViewApi<'a, API>
 where
-API: Api,
-API::Response: Future + Send + 'a,
-<API::Response as Future>::Output: Serialize + Send + 'a,
-API::Message: Message,
+    API: Api,
+    API::Response: Future + Send + 'a,
+    <API::Response as Future>::Output: Serialize + Send + 'a,
+    API::Message: Message,
 {
     type Message = InvokeRequest;
     type Response = BoxFuture<'a, ApiResponse>;
-    
+
     fn handle(&self, msg: Self::Message) -> Self::Response {
         let api_name = msg.body().api_name.clone();
         let api_f_name = api_name.clone();
         let ref api = self.api;
         Message::from_message(&msg)
-        .map(|body| api.handle(body))
-        .map(|response| response.into_response())
-        .map(move |future| {
-            future
-            .then(move |val| {
-                futures::future::ready({
-                    val.map(|response| ApiResponse::OpResponse {
-                        api_name: api_name.clone(),
-                        body: response,
+            .map(|body| api.handle(body))
+            .map(|response| response.into_response())
+            .map(move |future| {
+                future
+                    .then(move |val| {
+                        futures::future::ready({
+                            val.map(|response| ApiResponse::OpResponse {
+                                api_name: api_name.clone(),
+                                body: response,
+                            })
+                            .unwrap_or_else(|| ApiResponse::OpDoNothing(api_name))
+                        })
                     })
-                    .unwrap_or_else(|| ApiResponse::OpDoNothing(api_name))
-                })
+                    .right_future()
+            })
+            .unwrap_or_else(|| {
+                futures::future::ready(ApiResponse::OpDoNothing(api_f_name.clone())).left_future()
             })
             .boxed()
-        })
-        .unwrap_or_else(|| {
-            futures::future::ready(ApiResponse::OpDoNothing(api_f_name.clone())).boxed()
-        })
     }
 }
 
 impl<'a, API> From<(&'a str, API)> for WebViewApi<'a, (&'a str, API)>
 where
-API: Api,
-API::Response: Future + Send + 'a,
-<API::Response as Future>::Output: Serialize + Send + 'a,
-API::Message: Message,
+    API: Api,
+    API::Response: Future + Send + 'a,
+    <API::Response as Future>::Output: Serialize + Send + 'a,
+    API::Message: Message,
 {
     fn from(apituple: (&'a str, API)) -> Self {
         let api_key = apituple.0;
@@ -94,17 +95,17 @@ impl<'a, Factory, API> WVLazyApi<'a, Factory, API> {
 
 impl<Factory, Fut, API> Api for WVLazyApi<'static, Factory, API>
 where
-Factory: Fn(&mut InvokeRequest) -> Fut + Sync + Send + 'static,
-Fut: Future<Output = API> + Send + 'static,
-API: Api + Send + 'static + Sync,
-API::Response: Future + Send + 'static,
-<API::Response as Future>::Output: Serialize + Send + 'static,
-API::Message: Message + Send,
+    Factory: Fn(&mut InvokeRequest) -> Fut + Sync + Send + 'static,
+    Fut: Future<Output = API> + Send + 'static,
+    API: Api + Send + 'static + Sync,
+    API::Response: Future + Send + 'static,
+    <API::Response as Future>::Output: Serialize + Send + 'static,
+    API::Message: Message + Send,
 {
     type Message = InvokeRequest;
-    
+
     type Response = BoxFuture<'static, ApiResponse>;
-    
+
     fn handle(&self, mut msg: Self::Message) -> Self::Response {
         let message = Message::from_message(&msg);
         let api_name = msg.body().api_name().to_owned();
@@ -126,40 +127,39 @@ API::Message: Message + Send,
             };
             let cell = ptr.read().await;
             message
-            .map(|msg| {
-                cell
-                .as_ref()
-                .unwrap()
-                .handle(msg)
-                .into_response()
-                .then(|body| {
-                    ready(match body {
-                        Some(body) => ApiResponse::OpResponse {
-                            api_name: api_name.clone(),
-                            body,
-                        },
-                        None => ApiResponse::OpDoNothing(api_name),
-                    })
+                .map(|msg| {
+                    cell.as_ref()
+                        .unwrap()
+                        .handle(msg)
+                        .into_response()
+                        .then(|body| {
+                            ready(match body {
+                                Some(body) => ApiResponse::OpResponse {
+                                    api_name: api_name.clone(),
+                                    body,
+                                },
+                                None => ApiResponse::OpDoNothing(api_name),
+                            })
+                        })
+                        .right_future()
                 })
-                .right_future()
-            })
-            .unwrap_or_else(|| ready(ApiResponse::OpDoNothing(api_f_name)).left_future())
-            .await
+                .unwrap_or_else(|| ready(ApiResponse::OpDoNothing(api_f_name)).left_future())
+                .await
         }
         .boxed()
     }
 }
 
 impl<Cont, API, Mid, Context> Load<WebViewApi<'static, API>>
-for WebViewApp<'static, Cont, Mid, Context>
+    for WebViewApp<'static, Cont, Mid, Context>
 where
-Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + Send,
-API: Api + 'static,
-API::Response: Future + Send + 'static,
-<API::Response as Future>::Output: Serialize + Send + 'static,
-API::Message: Message,
-Context: SpawnerFactory,
-Cont: AsRef<str>,
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + Send,
+    API: Api + 'static,
+    API::Response: Future + Send + 'static,
+    <API::Response as Future>::Output: Serialize + Send + 'static,
+    API::Message: Message,
+    Context: SpawnerFactory,
+    Cont: AsRef<str>,
 {
     type Result = Self;
     fn load(mut self, wapi: WebViewApi<'static, API>) -> Self::Result {
@@ -169,17 +169,17 @@ Cont: AsRef<str>,
 }
 
 impl<Cont, Factory, Fut, API, Mid, Context> Load<WVLazyApi<'static, Factory, API>>
-for WebViewApp<'static, Cont, Mid, Context>
+    for WebViewApp<'static, Cont, Mid, Context>
 where
-Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + Send,
-Factory: Fn(&mut InvokeRequest) -> Fut + 'static + Sync + Send,
-Fut: Future<Output = API> + Send + 'static,
-API: Api + Send + 'static + std::marker::Sync,
-API::Response: Future + Send + 'static,
-<API::Response as Future>::Output: Serialize + Send + 'static,
-API::Message: Message + Send,
-Context: SpawnerFactory,
-Cont: AsRef<str>,
+    Mid: Middleware<Message = InvokeRequest, Response = BoxFuture<'static, ApiResponse>> + Send,
+    Factory: Fn(&mut InvokeRequest) -> Fut + 'static + Sync + Send,
+    Fut: Future<Output = API> + Send + 'static,
+    API: Api + Send + 'static + std::marker::Sync,
+    API::Response: Future + Send + 'static,
+    <API::Response as Future>::Output: Serialize + Send + 'static,
+    API::Message: Message + Send,
+    Context: SpawnerFactory,
+    Cont: AsRef<str>,
 {
     type Result = Self;
     fn load(mut self, wapi: WVLazyApi<'static, Factory, API>) -> Self::Result {

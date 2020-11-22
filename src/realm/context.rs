@@ -46,7 +46,6 @@ impl SpawnerFactory for TokioBuilder {
 
     fn spawner(&mut self) -> Self::Spawner {
         self.0
-            .worker_threads(4)
             .thread_name("Realm Thread")
             .enable_all()
             .build()
@@ -66,5 +65,5 @@ impl Spawn for TokioSpawner {
 }
 
 pub fn tokio() -> TokioBuilder {
-    TokioBuilder(Builder::new_multi_thread())
+    TokioBuilder(Builder::new())
 }

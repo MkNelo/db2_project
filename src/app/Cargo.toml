@@ -3,17 +3,21 @@ name = "db2-client-application"
 version = "0.1.0"
 authors = ["syfers"]
 edition = "2018"
+build = "./build.rs"
 
 [[bin]]
 name = "db2_client_application"
 path = "main.rs"
-build = "build.rs"
+
+[install]
+root = "../../install/linux"
 
 [dependencies]
 realm = { path = "../realm" }
 db2-project-reports = { path = "../reports" }
 serde = { version = "*", features = ["derive"] }
-tokio-postgres = { version = "*" }
+tokio-postgres = { version = "0.5.2" }
+tokio = { version = "0.2" }
 serde_json = { version = "*" }
 env_logger = { version = "0.7.1" }
 log = { version = "0.4.11" }

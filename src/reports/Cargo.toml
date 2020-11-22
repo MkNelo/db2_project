@@ -11,13 +11,11 @@ path = "lib.rs"
 [dependencies]
 report-macros = { path = "macros" }
 realm = { path = "../realm" }
+serde_postgres = { version = "*" }
 serde = { version = "*", features = ["derive"] }
-tokio-postgres = { version = "*" }
+tokio-postgres = { version = "0.5.2" }
 serde_json = { version = "*" }
-env_logger = { version = "0.7.1" }
-log = { version = "0.4.11" }
-dotenv = { version = "0.15.0" }
 futures = { version = "*" }
 
 [dev-dependencies]
-tokio = { version = "*", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "0.2", features = ["rt-core", "rt-threaded"] }

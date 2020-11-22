@@ -1,19 +1,19 @@
-extern crate syn;
 extern crate quote;
+extern crate syn;
 
-use quote::quote;
 use proc_macro::TokenStream;
-use syn::{Token, Type, parse::Parser, punctuated::Punctuated};
+use quote::quote;
+use syn::{parse::Parser, punctuated::Punctuated, Token, Type};
 
 #[proc_macro]
 pub fn params(ts: TokenStream) -> TokenStream {
     let parser = Punctuated::<Type, Token![,]>::parse_terminated;
     let types = parser
-                                .parse(ts.clone())
-                                .expect("Expected a comma separated list of types")
-                                .into_iter()
-                                .collect::<Vec<Type>>();
-                                
+        .parse(ts.clone())
+        .expect("Expected a comma separated list of types")
+        .into_iter()
+        .collect::<Vec<Type>>();
+
     let count = types.iter().count();
     TokenStream::from(quote! {
         &{
@@ -49,5 +49,4 @@ pub fn params(ts: TokenStream) -> TokenStream {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

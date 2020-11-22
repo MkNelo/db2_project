@@ -1,6 +1,6 @@
-use std::fmt::Display;
 use serde::Deserialize;
 use serde_json::Value;
+use std::fmt::Display;
 use tokio_postgres::Error;
 
 extern crate realm;
@@ -10,7 +10,7 @@ pub mod report_manager;
 
 #[derive(Deserialize)]
 pub struct QueryInfo {
-    name: &'static str,
+    name: String,
     params: Value,
 }
 
@@ -24,8 +24,12 @@ impl Display for ReportError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut formatter = f.debug_struct("ReportError");
         match self {
-            ReportError::PgError(ref error) => formatter.field("Error from Postgres", error).finish(),
-            ReportError::CustomError(ref string) => formatter.field("Error in execution", string).finish()
+            ReportError::PgError(ref error) => {
+                formatter.field("Error from Postgres", error).finish()
+            }
+            ReportError::CustomError(ref string) => {
+                formatter.field("Error in execution", string).finish()
+            }
         }
     }
 }
@@ -33,105 +37,116 @@ impl Display for ReportError {
 impl std::error::Error for ReportError {}
 
 pub mod prelude {
-    pub use report_macros::*;
-    pub use crate::report_manager::*;
     pub use crate::report_api::*;
+    pub use crate::report_manager::*;
+    pub use report_macros::*;
 }
 
 #[cfg(tests)]
 mod tests {
     use std::sync::Arc;
-    
+
+    use realm::prelude::*;
     use report_macros::params;
     use serde_json::json;
     use tokio_postgres::NoTls;
-    use realm::prelude::*;
-    
+
     use crate::QueryInfo;
-    
+
     #[test]
     fn query_works() {
         let query = params!(i32, String, i32);
         let val = json!([34, "Hello world", 4]);
         let ref opt = query(&val);
-        
+
         println!("A ver: {:?}", opt);
         assert!(opt.is_some());
     }
-    
+
     #[test]
     fn report_works() {
-        use tokio::spawn;
         use super::report_api::report;
+        use tokio::spawn;
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
             let (client, connection) = tokio_postgres::connect(
                 "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
                 NoTls,
-            ).await
+            )
+            .await
             .unwrap();
-            spawn(async move {
-                connection.await
-            });
+            spawn(async move { connection.await });
             let client = Arc::new(client);
             let mut report = report("first/report", "SELECT $1;", params!(String))
-            .solve_with::<String, _>(|row| row.get(0));
-            
+                .solve_with::<String, _>(|row| row.get(0));
+
             {
                 report.prepare(client).await;
             }
-            
-            report.handle(QueryInfo {
-                name: "first/report",
-                params: json!(["Hello world"])
-            }).await
+
+            report
+                .handle(QueryInfo {
+                    name: "first/report",
+                    params: json!(["Hello world"]),
+                })
+                .await
         });
-        assert_eq!(result
-            .expect("Result was not Ok")
-            .first()
-            .expect("Response not there"), &json!("Hello World"));
-        }
+        assert_eq!(
+            result
+                .expect("Result was not Ok")
+                .first()
+                .expect("Response not there"),
+            &json!("Hello World")
+        );
     }
-    
-    #[test]
-    fn report_manager_works() {
-        use realm::Load;
-        use report_macros::params;
-        use report_manager::report_builder;
-        use realm::prelude::*;
-        use tokio::spawn;
-        use crate::report_api::report;
-        use std::sync::Arc;
-        use serde_json::json;
-        use tokio_postgres::NoTls;
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(async move {
-            let (client, connection) = tokio_postgres::connect(
-                "host = localhost user = syfers password = KHearts358/2 dbname = db2database",
-                NoTls,
-            ).await
-            .unwrap();
-            spawn(async move {
-                connection.await
-            });
-            let client = Arc::new(client);
-            report_builder(client, 2)
-            .load(report("first/report", "SELECT $1;", params!(String))
-            .solve_with::<String, _>(|row| row.get(0))).await
-            .load(report("second/report", "SELECT value FROM dummytable WHERE id = $1", params!(i32))
-            .solve_with::<String, _>(|row| row.get(0))).await
+}
+
+#[test]
+fn report_manager_works() {
+    use crate::report_api::report;
+    use realm::prelude::*;
+    use realm::Load;
+    use report_macros::params;
+    use report_manager::report_builder;
+    use serde_json::json;
+    use std::sync::Arc;
+    use tokio::spawn;
+    use tokio_postgres::NoTls;
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    let result = rt.block_on(async move {
+        let (client, connection) = tokio_postgres::connect(
+            "host = localhost user = syfers password = khearts358/2 dbname = db2database",
+            NoTls,
+        )
+        .await
+        .unwrap();
+        spawn(async move { connection.await });
+        let client = Arc::new(client);
+        report_builder(client, 2)
+            .load(report::<String, _>(
+                "first/report",
+                "SELECT $1;",
+                params!(String),
+            ))
+            .await
+            .load(report::<i32, _>(
+                "second/report",
+                "SELECT id FROM dummytable WHERE id = $1",
+                params!(i32),
+            ))
+            .await
             .finish()
             .handle(QueryInfo {
-                name: "first/report",
-                params: json!(["1"])
-            }).await
-        });
-        
-        assert_eq!(result
+                name: "second/report".into(),
+                params: json!([2_i32]),
+            })
+            .await
+    });
+
+    assert_eq!(
+        result
             .expect("Report not found")
-            .expect("Error processing query")
-            .first()
-            .expect("Result was not first")
-            , &json!("1"))
-        }
-        
+            .expect("Error processing query"),
+        vec![json!(2_i32)]
+    )
+}

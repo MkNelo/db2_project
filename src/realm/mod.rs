@@ -1,8 +1,6 @@
 use futures::Future;
 use std::marker::PhantomData;
 
-extern crate dotenv;
-extern crate env_logger;
 extern crate futures;
 extern crate tokio;
 

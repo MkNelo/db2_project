@@ -2,7 +2,11 @@ use std::any::Any;
 use std::any::TypeId;
 use std::sync::Arc;
 
-use futures::{Future, future::BoxFuture, task::{Spawn, SpawnError, SpawnExt}};
+use futures::{
+    future::BoxFuture,
+    task::{Spawn, SpawnError, SpawnExt},
+    Future,
+};
 use tokio::sync::RwLock;
 
 use super::super::BoxedApi;

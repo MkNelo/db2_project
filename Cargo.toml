@@ -1,9 +1,14 @@
+build = "build.src"
+
 [workspace]
 members = [
     "src/reports",
     "src/realm",
     "src/app",
-    "src/reports/macros"
+    "src/reports/macros",
+    "client/lib"
 ]
+
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

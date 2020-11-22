@@ -9,7 +9,7 @@ use super::middleware::none;
 use super::middleware::Middleware;
 use super::{Api, Application, BoxedApi};
 use futures::{future::BoxFuture, task::Spawn, Future, FutureExt};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
 use std::any::TypeId;
@@ -20,7 +20,6 @@ use web_view::{Content, WVResult, WebView};
 mod api;
 pub(crate) mod container;
 pub mod middleware;
-#[cfg(tests)]
 mod tests;
 
 #[derive(Deserialize)]
@@ -95,13 +94,13 @@ where
     fn into_response(self) -> BoxFuture<'a, Option<ApiResponseBody>>;
 }
 
-pub trait Message: for<'de> Deserialize<'de> {
+pub trait Message: DeserializeOwned {
     fn from_message(m: &InvokeRequest) -> Option<Self>;
 }
 
 impl<T> Message for T
 where
-    T: for<'de> Deserialize<'de>,
+    T: DeserializeOwned,
 {
     fn from_message(m: &InvokeRequest) -> Option<Self> {
         serde_json::from_value(m.body().payload().clone()).ok()
@@ -270,10 +269,10 @@ where
         let message_callback = Box::new(message_processing);
         self.webview_builder = self
             .webview_builder
-            .user_data(self.container.resolve_middleware(
-                self.context.spawner(),
-                self.data_container,
-            ))
+            .user_data(
+                self.container
+                    .resolve_middleware(self.context.spawner(), self.data_container),
+            )
             .invoke_handler(message_callback);
 
         self.webview_builder.build()

@@ -1,4 +1,8 @@
 **/target
+**/obj
+**/wwwroot
 /install
 /elm-stuff
 /.vscode
+**/bin
+**/styles
