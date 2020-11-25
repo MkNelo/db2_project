@@ -14,8 +14,7 @@ toolbar =
         , Html.form [ class "form-inline" ]
                     [ div [class "input-group input-group-lg mt-3"]
                           [ input [ class "form-control"
-                             , type_ "number"
-                             , placeholder "Año, e.j 1970"] []
+                                  , placeholder "Año, e.j 1970"] []
                     , div [ class "input-group-append" ]
                           [ button [ class "btn btn-dark" ]
                                    [ Icons.search ] ]]]]

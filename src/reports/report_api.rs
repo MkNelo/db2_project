@@ -1,5 +1,4 @@
-use std::sync::Arc;
-
+use actix::prelude::*;
 use futures::prelude::*;
 use realm::{
     prelude::{ready, BoxFuture},
@@ -10,33 +9,57 @@ use serde_json::{to_value, Value};
 use serde_postgres::from_row;
 use tokio_postgres::{row::Row, types::ToSql, types::Type, Client, Statement};
 
+use crate::client_actor::ClientActor;
+use crate::client_actor::QueryStatement;
+use crate::client_actor::Register;
+
 use super::QueryInfo;
 use super::ReportError;
+
+fn from_rows_to_value<Response>(row: Row) -> Value
+where
+    Response: Serialize + DeserializeOwned,
+{
+    to_value(from_row::<Response>(&row).unwrap()).unwrap()
+}
 
 pub struct Report<'a> {
     pub(crate) name: &'a str,
     query: &'a str,
     types: Option<&'a [Type]>,
-    client: Option<Arc<Client>>,
+    client: Option<Addr<ClientActor>>,
     statement: Option<Statement>,
-    solver: Arc<dyn (Fn(Row) -> Value) + Send + Sync>,
+    solver: fn(Row) -> Value,
     solve_params: &'a (dyn Fn(&Value) -> Option<Vec<Box<(dyn ToSql + Sync + Send)>>> + Send + Sync),
 }
 
 impl<'a> Report<'a> {
-    pub async fn prepare(&mut self, client: Arc<Client>) {
+    pub async fn prepare(&mut self, client: Addr<ClientActor>) {
         self.client = Some(client);
         self.statement = match self.types {
-            Some(types) => {
-                self.client
-                    .as_ref()
-                    .unwrap()
-                    .prepare_typed(self.query, types)
-                    .await
-            }
-            None => self.client.as_ref().unwrap().prepare(self.query).await,
+            Some(types) => self
+                .client
+                .as_ref()
+                .unwrap()
+                .send(Register::Statement(
+                    self.query.into(),
+                    self.types.unwrap().into(),
+                ))
+                .await
+                .unwrap()
+                .statement()
+                .unwrap(),
+            None => self
+                .client
+                .as_ref()
+                .unwrap()
+                .send(Register::Statement(self.query.into(), vec![]))
+                .await
+                .unwrap()
+                .statement()
+                .unwrap(),
         }
-        .ok();
+        .into();
     }
 
     pub fn typed(&mut self, types: &'a [Type]) {
@@ -57,7 +80,7 @@ pub fn report<
         name,
         query,
         types: None,
-        solver: Arc::new(|row| to_value(from_row::<Response>(&row).unwrap()).unwrap()),
+        solver: from_rows_to_value::<Response>,
         client: None,
         statement: None,
         solve_params: params,
@@ -65,11 +88,11 @@ pub fn report<
 }
 
 impl<'a> Api for Report<'a> {
-    type Message = QueryInfo;
-    type Response = BoxFuture<'a, Result<Vec<Value>, ReportError>>;
+    type Input = QueryInfo;
+    type Output = BoxFuture<'a, Result<Vec<Value>, ReportError>>;
 
-    fn handle(&self, msg: Self::Message) -> Self::Response {
-        let solver = self.solver.clone();
+    fn handle(&self, msg: Self::Input) -> Self::Output {
+        let solver = self.solver;
         let params = self.solve_params;
         let statement = self
             .statement
@@ -88,21 +111,16 @@ impl<'a> Api for Report<'a> {
                     ready(statement).and_then(move |statement| async move {
                         let result = ready(params)
                             .and_then(|params| async move {
-                                let params = params
-                                    .iter()
-                                    .map(|ptr| ptr.as_ref() as &(dyn ToSql + Sync))
-                                    .collect::<Vec<&(dyn ToSql + Sync)>>();
+                                let request = QueryStatement(statement, solver, params);
                                 client
-                                    .query(&statement, &*params)
-                                    .map_err(ReportError::PgError)
+                                    .send(request)
                                     .await
+                                    .unwrap()
+                                    .0
+                                    .map_err(|err| ReportError::PgError(err))
                             })
                             .await;
-                        result.map(|rows| {
-                            rows.into_iter()
-                                .map(|row| (&*solver)(row))
-                                .collect::<Vec<Value>>()
-                        })
+                        result
                     })
                 })
                 .await

@@ -5144,26 +5144,16 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Main$Model = function (count) {
-	return {count: count};
-};
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Main$init = function (_v0) {
-	return _Utils_Tuple2(
-		$author$project$Main$Model(0),
-		$elm$core$Platform$Cmd$none);
-};
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$subscriptions = function (model) {
-	return $elm$core$Platform$Sub$none;
-};
-var $author$project$Main$update = F2(
-	function (msg, model) {
-		return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-	});
+var $author$project$Main$Home = {$: 'Home'};
 var $author$project$Main$HourlyRanking = {$: 'HourlyRanking'};
+var $author$project$Main$Model = F3(
+	function (count, options, selectedReport) {
+		return {count: count, options: options, selectedReport: selectedReport};
+	});
+var $author$project$Navbar$NavbarItem = F3(
+	function (title, onCommand, icon) {
+		return {icon: icon, onCommand: onCommand, title: title};
+	});
 var $author$project$Main$Ranking = {$: 'Ranking'};
 var $author$project$Main$SelectedPage = function (a) {
 	return {$: 'SelectedPage', a: a};
@@ -5225,15 +5215,6 @@ var $author$project$Icons$award = A4(
 				]),
 			_List_Nil)
 		]));
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
-var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $author$project$Icons$clock = A4(
 	$author$project$Icons$svgFeatherIcon,
 	'24',
@@ -5258,15 +5239,83 @@ var $author$project$Icons$clock = A4(
 				]),
 			_List_Nil)
 		]));
-var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$html$Html$hr = _VirtualDom_node('hr');
-var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $author$project$Navbar$NavbarItem = F3(
-	function (title, onCommand, icon) {
-		return {icon: icon, onCommand: onCommand, title: title};
+var $elm$svg$Svg$Attributes$d = _VirtualDom_attribute('d');
+var $elm$svg$Svg$path = $elm$svg$Svg$trustedNode('path');
+var $author$project$Icons$home = A4(
+	$author$project$Icons$svgFeatherIcon,
+	'24',
+	'24',
+	'home',
+	_List_fromArray(
+		[
+			A2(
+			$elm$svg$Svg$path,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$d('M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z')
+				]),
+			_List_Nil),
+			A2(
+			$elm$svg$Svg$polyline,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$points('9 22 9 12 15 12 15 22')
+				]),
+			_List_Nil)
+		]));
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$init = function (_v0) {
+	return _Utils_Tuple2(
+		A3(
+			$author$project$Main$Model,
+			0,
+			_List_fromArray(
+				[
+					A3(
+					$author$project$Navbar$NavbarItem,
+					'Inicio',
+					$author$project$Main$SelectedPage($author$project$Main$Home),
+					$author$project$Icons$home),
+					A3(
+					$author$project$Navbar$NavbarItem,
+					'Ranking',
+					$author$project$Main$SelectedPage($author$project$Main$Ranking),
+					$author$project$Icons$award),
+					A3(
+					$author$project$Navbar$NavbarItem,
+					'Ranking por Hora',
+					$author$project$Main$SelectedPage($author$project$Main$HourlyRanking),
+					$author$project$Icons$clock)
+				]),
+			$author$project$Main$Home),
+		$elm$core$Platform$Cmd$none);
+};
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Main$subscriptions = function (model) {
+	return $elm$core$Platform$Sub$none;
+};
+var $author$project$Main$update = F2(
+	function (msg, model) {
+		var page = msg.a;
+		return _Utils_Tuple2(
+			_Utils_update(
+				model,
+				{selectedReport: page}),
+			$elm$core$Platform$Cmd$none);
 	});
-var $author$project$Navbar$item = $author$project$Navbar$NavbarItem;
-var $elm$html$Html$li = _VirtualDom_node('li');
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
+var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $elm$virtual_dom$VirtualDom$attribute = F2(
 	function (key, value) {
 		return A2(
@@ -5276,49 +5325,63 @@ var $elm$virtual_dom$VirtualDom$attribute = F2(
 	});
 var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
 var $elm$html$Html$img = _VirtualDom_node('img');
+var $elm$html$Html$a = _VirtualDom_node('a');
+var $elm$html$Html$Attributes$href = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'href',
+		_VirtualDom_noJavaScriptUri(url));
+};
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Navbar$listItem = F2(
-	function (_v0, isActive) {
-		var title = _v0.title;
-		var icon = _v0.icon;
-		var onCommand = _v0.onCommand;
-		return A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class(
-					isActive ? 'border-0 rounded-0 list-group-item list-group-item-action active d-flex flex-row align-items-center' : 'border-0 rounded-0 list-group-item list-group-item-action d-flex flex-row align-items-center'),
-					A2($elm$html$Html$Attributes$attribute, 'data-parent', '#sidebar'),
-					$elm$html$Html$Attributes$id('list-' + title),
-					A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
-					A2($elm$html$Html$Attributes$attribute, 'role', 'tab')
-				]),
-			_List_fromArray(
-				[
-					icon,
-					A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('h5 mt-1 ml-3')
-						]),
-					_List_fromArray(
-						[
-							$elm$html$Html$text(title)
-						]))
-				]));
-	});
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
+var $author$project$Navbar$listItem = function (_v0) {
+	var title = _v0.title;
+	var icon = _v0.icon;
+	var onCommand = _v0.onCommand;
+	return A2(
+		$elm$html$Html$a,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('list-group-item list-group-item-action d-flex flex-row align-items-center'),
+				A2($elm$html$Html$Attributes$attribute, 'data-parent', '#sidebar'),
+				$elm$html$Html$Attributes$href('#content'),
+				$elm$html$Html$Events$onClick(onCommand),
+				A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
+				A2($elm$html$Html$Attributes$attribute, 'role', 'tab'),
+				A2($elm$html$Html$Attributes$attribute, 'aria-controls', title)
+			]),
+		_List_fromArray(
+			[
+				icon,
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('h5 mt-1 ml-3')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(title)
+					]))
+			]));
+};
 var $elm$html$Html$nav = _VirtualDom_node('nav');
 var $elm$svg$Svg$polygon = $elm$svg$Svg$trustedNode('polygon');
 var $author$project$Icons$playCircle = function (_class) {
@@ -5354,23 +5417,13 @@ var $elm$html$Html$Attributes$src = function (url) {
 		_VirtualDom_noJavaScriptOrHtmlUri(url));
 };
 var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Navbar$navbar = function (opts) {
 	return A2(
 		$elm$html$Html$nav,
 		_List_fromArray(
 			[
 				$elm$html$Html$Attributes$class('active border-right border-dark position-fixed'),
-				$elm$html$Html$Attributes$id('sidebar'),
-				A2($elm$html$Html$Attributes$attribute, 'role', 'tablist')
+				$elm$html$Html$Attributes$id('sidebar')
 			]),
 		_List_fromArray(
 			[
@@ -5424,35 +5477,13 @@ var $author$project$Navbar$navbar = function (opts) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('list-group border-0 text-center text-md-left')
+						$elm$html$Html$Attributes$class('list-group list-group-flush'),
+						$elm$html$Html$Attributes$id('sidebar-list'),
+						A2($elm$html$Html$Attributes$attribute, 'role', 'tablist')
 					]),
-				A2(
-					$elm$core$List$map,
-					function (elem) {
-						return A2(
-							$author$project$Navbar$listItem,
-							elem,
-							A2(
-								$elm$core$Maybe$withDefault,
-								false,
-								A2(
-									$elm$core$Maybe$map,
-									function (pivot) {
-										return _Utils_eq(pivot, elem);
-									},
-									opts.selectedItem)));
-					},
-					opts.options))
+				A2($elm$core$List$map, $author$project$Navbar$listItem, opts))
 			]));
 };
-var $author$project$Navbar$NavbarOptions = F2(
-	function (selectedItem, options) {
-		return {options: options, selectedItem: selectedItem};
-	});
-var $author$project$Navbar$ofOptions = function (els) {
-	return A2($author$project$Navbar$NavbarOptions, $elm$core$Maybe$Nothing, els);
-};
-var $elm$html$Html$p = _VirtualDom_node('p');
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$html$Html$form = _VirtualDom_node('form');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -5583,7 +5614,6 @@ var $author$project$Toolbar$toolbar = A2(
 							_List_fromArray(
 								[
 									$elm$html$Html$Attributes$class('form-control'),
-									$elm$html$Html$Attributes$type_('number'),
 									$elm$html$Html$Attributes$placeholder('Año, e.j 1970')
 								]),
 							_List_Nil),
@@ -5607,7 +5637,102 @@ var $author$project$Toolbar$toolbar = A2(
 						]))
 				]))
 		]));
+var $elm$html$Html$hr = _VirtualDom_node('hr');
+var $elm$html$Html$p = _VirtualDom_node('p');
+var $elm$html$Html$li = _VirtualDom_node('li');
+var $author$project$Pages$Welcome$reportItem = function (_v0) {
+	var title = _v0.title;
+	var onCommand = _v0.onCommand;
+	return A2(
+		$elm$html$Html$li,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$a,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$href('#content'),
+						A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
+						$elm$html$Html$Events$onClick(onCommand)
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(title)
+					]))
+			]));
+};
 var $elm$html$Html$ul = _VirtualDom_node('ul');
+var $author$project$Pages$Welcome$page = function (list) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('mx-2 h-100 container-fluid')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('display-4')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Bienvenido')
+					])),
+				A2(
+				$elm$html$Html$p,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('lead mx-2')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Esta es una aplicación de reportaje para "Sistemas de bases de datos 2" basada en la carrera de 24h de Le Mans,\n                                                              recopilando datos desde 1970 hasta 1979.')
+					])),
+				A2(
+				$elm$html$Html$hr,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('bg-dark my-2')
+					]),
+				_List_Nil),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('h2')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Reportes')
+					])),
+				A2(
+				$elm$html$Html$p,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mx-2 ')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Se implementaron los primeros 5 reportes de la decena que deben implementarse:')
+					])),
+				A2(
+				$elm$html$Html$ul,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mx-4 list-group list-group-flush')
+					]),
+				A2($elm$core$List$map, $author$project$Pages$Welcome$reportItem, list))
+			]));
+};
+var $author$project$Main$viewReport = F2(
+	function (_v0, report) {
+		var options = _v0.options;
+		return $author$project$Pages$Welcome$page(options);
+	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -5617,21 +5742,7 @@ var $author$project$Main$view = function (model) {
 			]),
 		_List_fromArray(
 			[
-				$author$project$Navbar$navbar(
-				$author$project$Navbar$ofOptions(
-					_List_fromArray(
-						[
-							A3(
-							$author$project$Navbar$item,
-							'Ranking',
-							$author$project$Main$SelectedPage($author$project$Main$Ranking),
-							$author$project$Icons$award),
-							A3(
-							$author$project$Navbar$item,
-							'Ranking por Hora',
-							$author$project$Main$SelectedPage($author$project$Main$HourlyRanking),
-							$author$project$Icons$clock)
-						]))),
+				$author$project$Navbar$navbar(model.options),
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
@@ -5646,7 +5757,7 @@ var $author$project$Main$view = function (model) {
 						$elm$html$Html$div,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$class('bg-transparent page-place')
+								$elm$html$Html$Attributes$class('page-place')
 							]),
 						_List_fromArray(
 							[
@@ -5654,7 +5765,8 @@ var $author$project$Main$view = function (model) {
 								$elm$html$Html$div,
 								_List_fromArray(
 									[
-										$elm$html$Html$Attributes$class('jumbotron container jumbotron-fluid bg-transparent')
+										$elm$html$Html$Attributes$class('jumbotron container jumbotron-fluid bg-transparent tab-content'),
+										$elm$html$Html$Attributes$id('#content-pane')
 									]),
 								_List_fromArray(
 									[
@@ -5662,70 +5774,12 @@ var $author$project$Main$view = function (model) {
 										$elm$html$Html$div,
 										_List_fromArray(
 											[
-												$elm$html$Html$Attributes$class('mx-2 h-100')
+												$elm$html$Html$Attributes$class('tab-pane fade'),
+												$elm$html$Html$Attributes$id('content')
 											]),
 										_List_fromArray(
 											[
-												A2(
-												$elm$html$Html$div,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$class('display-4')
-													]),
-												_List_fromArray(
-													[
-														$elm$html$Html$text('Bienvenido')
-													])),
-												A2(
-												$elm$html$Html$p,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$class('lead mx-2')
-													]),
-												_List_fromArray(
-													[
-														$elm$html$Html$text('Esta es una aplicación de reportaje para "Sistemas de bases de datos 2" basada en la carrera de 24h de Le Mans,\n                                                              recopilando datos desde 1970 hasta 1979.')
-													])),
-												A2(
-												$elm$html$Html$hr,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$class('bg-dark my-2')
-													]),
-												_List_Nil),
-												A2(
-												$elm$html$Html$div,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$class('h2')
-													]),
-												_List_fromArray(
-													[
-														$elm$html$Html$text('Reportes')
-													])),
-												A2(
-												$elm$html$Html$p,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$class('mx-2 ')
-													]),
-												_List_fromArray(
-													[
-														$elm$html$Html$text('Se implementaron los primeros 5 reportes de la decena que deben implementarse:')
-													])),
-												A2(
-												$elm$html$Html$ul,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$elm$html$Html$li,
-														_List_Nil,
-														_List_fromArray(
-															[
-																$elm$html$Html$text('Ranking por hora')
-															]))
-													]))
+												A2($author$project$Main$viewReport, model, model.selectedReport)
 											]))
 									]))
 							]))

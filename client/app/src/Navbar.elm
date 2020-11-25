@@ -1,13 +1,8 @@
-module Navbar exposing (navbar, toggler, ofOptions, item)
+module Navbar exposing (NavbarItem, navbar, toggler)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Icons
-import Element exposing (el)
-
-type alias NavbarOptions msg =
-    { selectedItem : Maybe (NavbarItem msg)
-    , options : List (NavbarItem msg)
-    }
+import Html.Events exposing (onClick)
 
 type alias NavbarItem msg =
     { title : String
@@ -15,38 +10,28 @@ type alias NavbarItem msg =
     , icon : Html msg
     }
 
-item: String -> msg -> Html msg -> NavbarItem msg
-item = NavbarItem
-
-ofOptions: List (NavbarItem msg) -> NavbarOptions msg
-ofOptions els =
-    NavbarOptions Nothing els
-
 toggler: String -> List (Html msg) -> Html msg
 toggler className childs = 
     button [ class className
            , id "toggler"]
            childs
 
-listItem: NavbarItem msg -> Bool -> Html msg
-listItem { title, icon, onCommand } isActive =  
-    div [ class <| if isActive then 
-                        "border-0 rounded-0 list-group-item list-group-item-action active d-flex flex-row align-items-center" 
-                      else 
-                        "border-0 rounded-0 list-group-item list-group-item-action d-flex flex-row align-items-center"
+listItem: NavbarItem msg -> Html msg
+listItem { title, icon, onCommand } =
+    a [ class "list-group-item list-group-item-action d-flex flex-row align-items-center"
         , attribute "data-parent" "#sidebar" 
-        , id <| "list-" ++ title
+        , href <| "#content"
+        , onClick onCommand
         , attribute "data-toggle" "list" 
-        , attribute "role" "tab" ]
+        , attribute "role" "tab"
+        , attribute "aria-controls" title ]
         [ icon
-        , div [ class "h5 mt-1 ml-3" ] 
-                    [ text title ]]
+        , div [ class "h5 mt-1 ml-3" ] [ text title ]]
 
-navbar: NavbarOptions msg -> Html msg
+navbar: List (NavbarItem msg) -> Html msg
 navbar opts = 
     nav [ class "active border-right border-dark position-fixed"
-        , id "sidebar"
-        , attribute "role" "tablist" ]
+        , id "sidebar" ]
         [ div [ id "upper-o"
               , class "overlay d-flex flex-column bg-transparent align-items-center justify-content-center position-fixed"]
               [ div [ type_ "button"
@@ -59,8 +44,8 @@ navbar opts =
         ,  img [ class "img-thumbnail rounded-0"
                , src "https://www.honeybells.co.uk/assets/images/event-le-mans-24-hour-glamping.jpg"]
                [] 
-        , div [ class "list-group border-0 text-center text-md-left" ]
-              ( opts.options 
-              |> List.map ( \elem -> listItem elem <| Maybe.withDefault False
-                                                   <| Maybe.map (\pivot -> pivot == elem) 
-                                                   <| opts.selectedItem) )]
+        , div [ class "list-group list-group-flush"
+              , id "sidebar-list"
+              , attribute "role" "tablist" ]
+              ( opts
+              |> List.map listItem )]

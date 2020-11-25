@@ -5,6 +5,7 @@ module Icons
         , playCircle
         , clock
         , search
+        , home
         )
 
 import Html exposing (Html)
@@ -62,4 +63,11 @@ search =
     svgFeatherIcon "24" "24" "search"
         [ Svg.circle [ cx "11", cy "11", r "8" ] []
         , Svg.line [ x1 "21", y1 "21", x2 "16.65", y2 "16.65" ] []
+        ]
+
+home : Html msg
+home =
+    svgFeatherIcon "24" "24" "home"
+        [ Svg.path [ d "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" ] []
+        , Svg.polyline [ points "9 22 9 12 15 12 15 22" ] []
         ]

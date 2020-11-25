@@ -13,6 +13,9 @@ report-macros = { path = "macros" }
 realm = { path = "../realm" }
 serde_postgres = { version = "*" }
 serde = { version = "*", features = ["derive"] }
+actix = { version = "0.10.0" }
+actix-rt = { version = "*" }
+tokio = { version = "0.2", features = ["sync"] }
 tokio-postgres = { version = "0.5.2" }
 serde_json = { version = "*" }
 futures = { version = "*" }

@@ -1,14 +1,17 @@
+use actix::Addr;
+use futures::future::ready;
+use futures::TryFutureExt;
 use futures::{future::BoxFuture, FutureExt};
 use realm::{Api, Application, Load};
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
-use tokio_postgres::Client;
+use std::collections::HashMap;
 
+use crate::client_actor::ClientActor;
 use crate::{report_api::Report, QueryInfo, ReportError};
 
 pub struct ReportManagerBuilder<'a> {
     apis: HashMap<&'a str, Report<'a>>,
-    client: Arc<Client>,
+    client: Addr<ClientActor>,
 }
 
 impl<'a> Load<Report<'a>> for ReportManagerBuilder<'a> {
@@ -25,7 +28,7 @@ impl<'a> Load<Report<'a>> for ReportManagerBuilder<'a> {
     }
 }
 
-pub fn report_builder(client: Arc<Client>, capacity: usize) -> ReportManagerBuilder<'static> {
+pub fn report_builder(client: Addr<ClientActor>, capacity: usize) -> ReportManagerBuilder<'static> {
     ReportManagerBuilder {
         apis: HashMap::with_capacity(capacity),
         client,
@@ -33,36 +36,36 @@ pub fn report_builder(client: Arc<Client>, capacity: usize) -> ReportManagerBuil
 }
 
 pub struct ReportManager<'a> {
-    apis: Arc<HashMap<&'a str, Report<'a>>>,
+    apis: HashMap<&'a str, Report<'a>>,
 }
 
 impl<'a> Application for ReportManagerBuilder<'a> {
     type Result = ReportManager<'a>;
 
     fn finish(self) -> Self::Result {
-        ReportManager {
-            apis: Arc::new(self.apis),
-        }
+        ReportManager { apis: self.apis }
     }
 }
 
 impl<'a> Api for ReportManager<'a> {
-    type Message = QueryInfo;
-    type Response = BoxFuture<'a, Option<Result<Vec<Value>, String>>>;
+    type Input = QueryInfo;
+    type Output = BoxFuture<'a, Option<Result<Vec<Value>, String>>>;
 
-    fn handle(&self, msg: Self::Message) -> Self::Response {
+    fn handle(&self, msg: Self::Input) -> Self::Output {
         let name = msg.name.clone();
-        let api = self.apis.clone();
-        async move {
-            let api = api.get(&*name);
-            match api {
-                Some(api) => Some(api.handle(msg).await.map_err(|err| match err {
+        let ref api = self.apis;
+        let api = api.get(&*name);
+
+        api.map(|api| {
+            api.handle(msg)
+                .map_err(|err| match err {
                     ReportError::PgError(err) => err.to_string(),
                     ReportError::CustomError(err) => err.into(),
-                })),
-                None => None,
-            }
-        }
+                })
+                .map(Some)
+                .right_future()
+        })
+        .unwrap_or_else(|| ready(None).left_future())
         .boxed()
     }
 }

@@ -12,4 +12,5 @@ $(document).ready(() => {
         $(".collapse.in").toggleClass("in")
         $('a[aria-expanded=true]').attr('aria-expanded', 'false')
     })
+    $("#sidebar-list a:first-child").tab("show")
 })
