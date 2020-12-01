@@ -6,3 +6,5 @@
 /.vscode
 **/bin
 **/styles
+**.code-workspace
+**.metals

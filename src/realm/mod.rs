@@ -5,6 +5,7 @@ extern crate actix_rt;
 extern crate futures;
 extern crate tokio;
 
+pub mod adapters;
 pub mod webview;
 
 pub trait Api {
@@ -45,6 +46,7 @@ pub fn api<F, T, O>(f: F) -> FuncApi<F, T, O> {
 }
 
 pub mod prelude {
+    pub use super::adapters::*;
     pub use super::webview::middleware::*;
     pub use super::webview::prelude::*;
     pub use super::webview::*;

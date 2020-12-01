@@ -77,6 +77,10 @@ impl WebViewBuilderContainer {
         self.actor_container.load(actor);
     }
 
+    pub fn actor_container(&self) -> &ActorContainer {
+        &self.actor_container
+    }
+
     pub fn finalize(
         WebViewBuilderContainer {
             actor_container,

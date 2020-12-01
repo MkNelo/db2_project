@@ -7,10 +7,10 @@ import Navbar exposing (NavbarItem)
 
 
 reportItem : NavbarItem msg -> Html msg
-reportItem { title, onCommand } =
+reportItem { title, onCommand, toggle } =
     li []
         [ a
-            [ href <| "#content"
+            [ href <| "#" ++ Maybe.withDefault "" toggle
             , attribute "data-toggle" "list"
             , onClick onCommand
             ]
@@ -25,7 +25,7 @@ page list =
             [ text "Bienvenido" ]
         , p [ class "lead mx-2" ] [ text """Esta es una aplicación de reportaje para "Sistemas de bases de datos 2" basada en la carrera de 24h de Le Mans,
                                                               recopilando datos desde 1970 hasta 1979.""" ]
-        , hr [ class "bg-dark my-2" ] []
+        , hr [ class "bg-light my-2" ] []
         , div [ class "h2" ]
             [ text "Reportes" ]
         , p [ class "mx-2 " ]

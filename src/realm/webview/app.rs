@@ -1,4 +1,5 @@
 use std::mem::MaybeUninit;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use actix::prelude::*;
@@ -12,6 +13,7 @@ use web_view::WebViewBuilder;
 use crate::Application;
 use crate::Load;
 
+use super::api::WebViewApiFactory;
 use super::api::WebViewLoadableActor;
 use super::container::WebViewBuilderContainer;
 use super::container::WebViewContainer;
@@ -20,6 +22,37 @@ use super::AppString;
 use super::InvokeBody;
 use super::InvokeRequest;
 use super::KeyedActor;
+
+macro_rules! impl_extractor {
+    ($($name:tt),+) => {
+        impl<'a, Cont, Factory, Fut, $($name),+> Load<WebViewApiFactory<Factory,  (Fut, $($name), +) >> for AppBuilder<'a, Cont>
+        where
+            Factory: Fn($(Addr<$name>),+) -> Fut,
+            Fut: Future + Send + 'a,
+            <Factory::Output as Future>::Output: KeyedActor,
+            Cont: Send + 'a,
+        $(
+            $name: Actor<Context = Context<$name>> + Send + Sync
+        ),+
+        {
+            type Result = Pin<Box<dyn Future<Output = Self> + 'a>>;
+
+            fn load(self, arg: WebViewApiFactory<Factory, ( Fut, $($name),+ )>) -> Self::Result {
+                let ref container = self.container;
+                let ref factory = arg.0;
+                let container = container.actor_container();
+                let api = factory($(container.get::<$name>().unwrap()),+);
+                Box::pin(async move { self.load(api.await) })
+            }
+        }
+    }
+}
+
+impl_extractor!(A);
+impl_extractor!(A, B);
+impl_extractor!(A, B, C);
+impl_extractor!(A, B, C, D);
+impl_extractor!(A, B, C, D, E);
 
 pub struct App {
     handle: Handle<MaybeUninit<Addr<Self>>>,
@@ -103,6 +136,7 @@ pub struct AppBuilder<'a, Cont> {
         fn(&mut WebView<MaybeUninit<Addr<App>>>, &str) -> WVResult,
         Cont,
     >,
+    fullscreen: bool,
 }
 
 impl<'a, Cont> AppBuilder<'a, Cont>
@@ -114,6 +148,7 @@ where
         AppBuilder {
             container: api_container.into(),
             builder: web_view::builder(),
+            fullscreen: false,
         }
     }
 
@@ -124,6 +159,18 @@ where
 
     pub fn size(mut self, w: i32, h: i32) -> Self {
         self.builder = self.builder.size(w, h);
+        self
+    }
+
+    pub fn frameless(mut self, frameless: bool) -> Self {
+        self.builder = self.builder.frameless(frameless);
+
+        self
+    }
+
+    pub fn fullscreen(mut self, fullscreen: bool) -> Self {
+        self.fullscreen = fullscreen;
+
         self
     }
 }
@@ -158,6 +205,7 @@ where
     }
 }
 
+
 impl<'a, Cont> Application for AppBuilder<'a, Cont>
 where
     Cont: AsRef<str>,
@@ -171,7 +219,11 @@ where
             data.do_send(Received(msg.into()));
             Ok(())
         };
-        let AppBuilder { container, builder } = self;
+        let AppBuilder {
+            container,
+            builder,
+            fullscreen,
+        } = self;
         let mut webview = builder
             .user_data(MaybeUninit::uninit())
             .invoke_handler(message_handler)
@@ -187,6 +239,8 @@ where
         });
 
         *webview.user_data_mut() = MaybeUninit::new(addr);
+
+        webview.set_fullscreen(fullscreen);
 
         webview
     }

@@ -7,7 +7,7 @@ build = "./build.rs"
 
 [[bin]]
 name = "db2_client_application"
-path = "main.rs"
+path = "src/main.rs"
 
 [install]
 root = "../../install/linux"
@@ -17,7 +17,8 @@ realm = { path = "../realm" }
 db2-project-reports = { path = "../reports" }
 serde = { version = "*", features = ["derive"] }
 tokio-postgres = { version = "0.5.2" }
-tokio = { version = "0.2" }
+actix-rt = { version = "*" }
+actix = { version = "0.10.0" }
 serde_json = { version = "*" }
 env_logger = { version = "0.7.1" }
 log = { version = "0.4.11" }

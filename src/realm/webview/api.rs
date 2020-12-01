@@ -1,4 +1,5 @@
 use std::future::ready;
+use std::marker::PhantomData;
 
 use actix::dev::MessageResponse;
 use actix::prelude::*;
@@ -77,27 +78,33 @@ where
         } = msg;
         let result = serde_json::from_value(payload.clone());
         let handler = match result {
-            Ok(result) => {
-                self.api.handle(result).then(move |ref result| {
+            Ok(result) => self
+                .api
+                .handle(result)
+                .then(move |ref result| {
                     let value = serde_json::to_value(result).unwrap();
                     let send = match value {
-                        Object(map) if map.contains_key("Err") => serde_json::to_string(&error(api_name, result)).unwrap(),
+                        Object(map) if map.contains_key("Err") => {
+                            serde_json::to_string(&error(api_name, result)).unwrap()
+                        }
                         _ => serde_json::to_string(&success(api_name, result)).unwrap(),
                     };
                     caller.do_send(send.into()).ok();
                     ready(())
                 })
-                .right_future()
-            },
+                .right_future(),
             Err(e) => {
-                let error = serde_json::to_string(&error(api_name, &json!({
-                    "error": "Malformed payload",
-                    "found": payload.to_string(),
-                    "description": e.to_string()
-                }))).unwrap();
+                let error = serde_json::to_string(&error(
+                    api_name,
+                    &json!({
+                        "error": "Malformed payload",
+                        "found": payload.to_string(),
+                        "description": e.to_string()
+                    }),
+                ))
+                .unwrap();
                 caller.do_send(error.into()).ok();
-                ready(())
-                    .left_future()
+                ready(()).left_future()
             }
         };
         Box::pin(handler.into_actor(self))
@@ -170,3 +177,5 @@ where
 }
 
 pub struct WebViewLoadableActor<A: Actor>(pub(crate) Addr<A>);
+
+pub struct WebViewApiFactory<F, ArgDump>(pub(crate) F, pub(crate) PhantomData<ArgDump>);

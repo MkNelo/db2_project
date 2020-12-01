@@ -13,4 +13,12 @@ $(document).ready(() => {
         $('a[aria-expanded=true]').attr('aria-expanded', 'false')
     })
     $("#sidebar-list a:first-child").tab("show")
+
+    $("#form-year-search").on('submit', () => {
+        $("#form-year-group").addClass('was-validated')
+    });
+
+    $("#form-year-search").on('input', () => {
+        $("#form-year-group").removeClass('was-validated')
+    });
 })

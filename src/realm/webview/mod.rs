@@ -1,9 +1,12 @@
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use actix::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use self::api::WebViewApi;
+use self::api::WebViewApiFactory;
 use self::api::WebViewLazyApi;
 use self::container::ActorContainer;
 use self::prelude::WebViewLoadableActor;
@@ -12,6 +15,7 @@ mod api;
 pub mod app;
 pub(crate) mod container;
 pub mod middleware;
+#[cfg(tests)]
 mod tests;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -122,6 +126,13 @@ pub fn success<Data: Serialize>(api_name: String, data: &Data) -> ApiResponse {
     }
 }
 
+pub fn web_view_api<A>(api_key: &'static str, api: A) -> WebViewApi<A>
+where
+    WebViewApi<A>: KeyedActor,
+{
+    WebViewApi { api_key, api }
+}
+
 pub fn lazy<F>(api_key: &'static str, factory: F) -> WebViewLazyApi<F>
 where
     WebViewLazyApi<F>: KeyedActor,
@@ -131,6 +142,11 @@ where
         factory,
         api: None,
     }
+}
+
+pub fn api_init_with<F, A>(f: F) -> WebViewApiFactory<F, A>
+{
+    WebViewApiFactory(f, PhantomData)
 }
 
 pub fn actor<A: Actor>(addr: Addr<A>) -> WebViewLoadableActor<A> {

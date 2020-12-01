@@ -1,6 +1,7 @@
+use std::marker::PhantomData;
+
 use actix::prelude::*;
 use futures::future::ready;
-use serde_json::Value;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::types::Type;
 use tokio_postgres::Transaction;
@@ -10,18 +11,28 @@ use actix::dev::*;
 
 #[derive(Message)]
 #[rtype(result = "Registered")]
+#[allow(dead_code)]
 pub(crate) enum Register {
     Transaction(Box<dyn FnMut(&mut Transaction) + Send + Sync>),
     Statement(String, Vec<Type>),
 }
 
 #[derive(Message)]
-#[rtype(result = "ExecutionResult")]
-pub(crate) struct QueryStatement<S, F>(
+#[rtype(result = "ExecutionResult<R>")]
+pub(crate) struct QueryStatement<R: 'static, S, F>
+(
     pub(crate) S,
     pub(crate) F,
+    PhantomData<R>,
     pub(crate) Vec<Box<dyn ToSql + Send + Sync>>,
 );
+
+pub(crate) fn query_message<R, S, T>(s: S, f: T, params: Vec<Box<dyn ToSql + Send + Sync>>) -> QueryStatement<R, S, T>
+where
+    R: 'static
+{
+    QueryStatement(s, f, PhantomData, params)
+}
 
 pub(crate) enum RegisterResponse<A> {
     RegisterStatement(ResponseActFuture<A, Registered>),
@@ -74,7 +85,7 @@ impl Registered {
     }
 }
 
-pub(crate) struct ExecutionResult(pub(crate) Result<Vec<Value>, Error>);
+pub(crate) struct ExecutionResult<R>(pub(crate) Result<Vec<R>, Error>);
 
 pub struct ClientActor {
     client: Client,
@@ -120,16 +131,16 @@ where
     }
 }
 
-impl<S, T> Handler<QueryStatement<S, T>> for ClientActor
+impl<S, T, R> Handler<QueryStatement<R, S, T>> for ClientActor
 where
     S: ToStatement + 'static,
-    T: Fn(Row) -> Value + 'static,
+    T: Fn(Row) -> R + 'static,
 {
-    type Result = ResponseActFuture<Self, ExecutionResult>;
+    type Result = ResponseActFuture<Self, ExecutionResult<R>>;
 
     fn handle(
         &mut self,
-        QueryStatement(stat, map, params): QueryStatement<S, T>,
+        QueryStatement(stat, map, _, params): QueryStatement<R, S, T>,
         _: &mut Self::Context,
     ) -> Self::Result {
         let client: *const Client = &self.client;
@@ -141,7 +152,7 @@ where
                     .collect::<Vec<&(dyn ToSql + Sync)>>();
                 let res = unsafe { (*client).query(&stat, &*params) }
                     .await
-                    .map(|vec| vec.into_iter().map(map).collect::<Vec<Value>>());
+                    .map(|vec| vec.into_iter().map(map).collect::<Vec<R>>());
                 ExecutionResult(res)
             }
             .actfuture(),

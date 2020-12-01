@@ -283,6 +283,8 @@ dependencies = [
 name = "db2-client-application"
 version = "0.1.0"
 dependencies = [
+ "actix",
+ "actix-rt",
  "db2-project-reports",
  "dotenv",
  "env_logger",
@@ -291,7 +293,6 @@ dependencies = [
  "realm",
  "serde",
  "serde_json",
- "tokio",
  "tokio-postgres",
 ]
 

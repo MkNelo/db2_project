@@ -5,46 +5,42 @@ use realm::{
     Api,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::{to_value, Value};
+use serde_json::Value;
 use serde_postgres::from_row;
-use tokio_postgres::{row::Row, types::ToSql, types::Type, Client, Statement};
+use tokio_postgres::{row::Row, types::ToSql, types::Type, Statement};
 
 use crate::client_actor::ClientActor;
-use crate::client_actor::QueryStatement;
 use crate::client_actor::Register;
+use crate::client_actor::query_message;
 
 use super::QueryInfo;
 use super::ReportError;
 
-fn from_rows_to_value<Response>(row: Row) -> Value
+fn from_rows_to_value<Response>(row: Row) -> Response
 where
     Response: Serialize + DeserializeOwned,
 {
-    to_value(from_row::<Response>(&row).unwrap()).unwrap()
+    from_row::<Response>(&row).unwrap()
 }
 
-pub struct Report<'a> {
-    pub(crate) name: &'a str,
+pub struct Report<'a, R> {
     query: &'a str,
     types: Option<&'a [Type]>,
     client: Option<Addr<ClientActor>>,
     statement: Option<Statement>,
-    solver: fn(Row) -> Value,
+    solver: fn(Row) -> R,
     solve_params: &'a (dyn Fn(&Value) -> Option<Vec<Box<(dyn ToSql + Sync + Send)>>> + Send + Sync),
 }
 
-impl<'a> Report<'a> {
-    pub async fn prepare(&mut self, client: Addr<ClientActor>) {
+impl<'a, R> Report<'a, R> {
+    async fn prepare(&mut self, client: Addr<ClientActor>) {
         self.client = Some(client);
         self.statement = match self.types {
             Some(types) => self
                 .client
                 .as_ref()
                 .unwrap()
-                .send(Register::Statement(
-                    self.query.into(),
-                    self.types.unwrap().into(),
-                ))
+                .send(Register::Statement(self.query.into(), types.into()))
                 .await
                 .unwrap()
                 .statement()
@@ -62,34 +58,39 @@ impl<'a> Report<'a> {
         .into();
     }
 
-    pub fn typed(&mut self, types: &'a [Type]) {
+    pub fn typed(mut self, types: &'a [Type]) -> Self{
         self.types.replace(types);
+        self
     }
 }
 
-pub fn report<
+pub async fn report<
     'a,
     Response: DeserializeOwned + Serialize + Sync + Send,
     Params: Fn(&Value) -> Option<Vec<Box<(dyn ToSql + Send + Sync)>>> + Send + Sync + 'a,
 >(
-    name: &'a str,
     query: &'a str,
     params: &'a Params,
-) -> Report<'a> {
-    Report {
-        name,
+    client: Addr<ClientActor>
+) -> Report<'a, Response> {
+    let mut report = Report {
         query,
         types: None,
         solver: from_rows_to_value::<Response>,
         client: None,
         statement: None,
         solve_params: params,
-    }
+    };
+    report.prepare(client).await;
+    report
 }
 
-impl<'a> Api for Report<'a> {
+impl<'a, R> Api for Report<'a, R>
+where
+    R: Send + 'static
+{
     type Input = QueryInfo;
-    type Output = BoxFuture<'a, Result<Vec<Value>, ReportError>>;
+    type Output = BoxFuture<'a, Result<Vec<R>, ReportError>>;
 
     fn handle(&self, msg: Self::Input) -> Self::Output {
         let solver = self.solver;
@@ -111,7 +112,7 @@ impl<'a> Api for Report<'a> {
                     ready(statement).and_then(move |statement| async move {
                         let result = ready(params)
                             .and_then(|params| async move {
-                                let request = QueryStatement(statement, solver, params);
+                                let request = query_message(statement, solver, params);
                                 client
                                     .send(request)
                                     .await

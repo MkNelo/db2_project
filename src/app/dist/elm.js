@@ -5146,13 +5146,13 @@ var $elm$core$Task$perform = F2(
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Main$Home = {$: 'Home'};
 var $author$project$Main$HourlyRanking = {$: 'HourlyRanking'};
-var $author$project$Main$Model = F3(
-	function (count, options, selectedReport) {
-		return {count: count, options: options, selectedReport: selectedReport};
+var $author$project$Main$Model = F5(
+	function (count, options, selectedReport, searchErrorMessage, searchTextMessage) {
+		return {count: count, options: options, searchErrorMessage: searchErrorMessage, searchTextMessage: searchTextMessage, selectedReport: selectedReport};
 	});
-var $author$project$Navbar$NavbarItem = F3(
-	function (title, onCommand, icon) {
-		return {icon: icon, onCommand: onCommand, title: title};
+var $author$project$Navbar$NavbarItem = F4(
+	function (title, onCommand, icon, toggle) {
+		return {icon: icon, onCommand: onCommand, title: title, toggle: toggle};
 	});
 var $author$project$Main$Ranking = {$: 'Ranking'};
 var $author$project$Main$SelectedPage = function (a) {
@@ -5267,28 +5267,33 @@ var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		A3(
+		A5(
 			$author$project$Main$Model,
 			0,
 			_List_fromArray(
 				[
-					A3(
+					A4(
 					$author$project$Navbar$NavbarItem,
 					'Inicio',
 					$author$project$Main$SelectedPage($author$project$Main$Home),
-					$author$project$Icons$home),
-					A3(
+					$author$project$Icons$home,
+					$elm$core$Maybe$Just('home')),
+					A4(
 					$author$project$Navbar$NavbarItem,
 					'Ranking',
 					$author$project$Main$SelectedPage($author$project$Main$Ranking),
-					$author$project$Icons$award),
-					A3(
+					$author$project$Icons$award,
+					$elm$core$Maybe$Just('ranking')),
+					A4(
 					$author$project$Navbar$NavbarItem,
 					'Ranking por Hora',
 					$author$project$Main$SelectedPage($author$project$Main$HourlyRanking),
-					$author$project$Icons$clock)
+					$author$project$Icons$clock,
+					$elm$core$Maybe$Just('hourly-ranking'))
 				]),
-			$author$project$Main$Home),
+			$author$project$Main$Home,
+			$elm$core$Maybe$Nothing,
+			'1970'),
 		$elm$core$Platform$Cmd$none);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5296,15 +5301,48 @@ var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (model) {
 	return $elm$core$Platform$Sub$none;
 };
+var $elm$core$Basics$ge = _Utils_ge;
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		var page = msg.a;
-		return _Utils_Tuple2(
-			_Utils_update(
-				model,
-				{selectedReport: page}),
-			$elm$core$Platform$Cmd$none);
+		switch (msg.$) {
+			case 'SelectedPage':
+				var page = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{selectedReport: page}),
+					$elm$core$Platform$Cmd$none);
+			case 'NavTextChanged':
+				var newText = msg.a;
+				var year = $elm$core$String$toInt(newText);
+				var error = function () {
+					if (year.$ === 'Just') {
+						var newYear = year.a;
+						return ((newYear <= 1979) && (newYear >= 1970)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just('Not in bounds');
+					} else {
+						return $elm$core$Maybe$Just('Not a year');
+					}
+				}();
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{searchErrorMessage: error, searchTextMessage: newText}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var newText = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{searchTextMessage: newText}),
+					$elm$core$Platform$Cmd$none);
+		}
 	});
+var $author$project$Main$FormSubmit = function (a) {
+	return {$: 'FormSubmit', a: a};
+};
+var $author$project$Main$NavTextChanged = function (a) {
+	return {$: 'NavTextChanged', a: a};
+};
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
@@ -5351,17 +5389,28 @@ var $elm$html$Html$Events$onClick = function (msg) {
 };
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var $author$project$Navbar$listItem = function (_v0) {
 	var title = _v0.title;
 	var icon = _v0.icon;
 	var onCommand = _v0.onCommand;
+	var toggle = _v0.toggle;
 	return A2(
 		$elm$html$Html$a,
 		_List_fromArray(
 			[
 				$elm$html$Html$Attributes$class('list-group-item list-group-item-action d-flex flex-row align-items-center'),
 				A2($elm$html$Html$Attributes$attribute, 'data-parent', '#sidebar'),
-				$elm$html$Html$Attributes$href('#content'),
+				$elm$html$Html$Attributes$href(
+				'#' + A2($elm$core$Maybe$withDefault, '', toggle)),
 				$elm$html$Html$Events$onClick(onCommand),
 				A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
 				A2($elm$html$Html$Attributes$attribute, 'role', 'tab'),
@@ -5484,9 +5533,515 @@ var $author$project$Navbar$navbar = function (opts) {
 				A2($elm$core$List$map, $author$project$Navbar$listItem, opts))
 			]));
 };
-var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$html$Html$form = _VirtualDom_node('form');
 var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
+var $author$project$Pages$SearchControl$control = function (_v0) {
+	var raceType = _v0.raceType;
+	var category = _v0.category;
+	var pagination = _v0.pagination;
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('container-fluid d-flex')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('btn-group btn-group-toggle mr-auto'),
+						A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'buttons')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn btn-secondary border active'),
+								$elm$html$Html$Attributes$type_('button')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('radio')
+									]),
+								_List_Nil),
+								$elm$html$Html$text('Ensayo')
+							])),
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn btn-secondary border'),
+								$elm$html$Html$Attributes$type_('button')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('radio')
+									]),
+								_List_Nil),
+								$elm$html$Html$text('Carrera')
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('btn-group btn-group-toggle mx-auto'),
+						A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'buttons')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn btn-secondary border active'),
+								$elm$html$Html$Attributes$type_('button')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('radio')
+									]),
+								_List_Nil),
+								$elm$html$Html$text('SP')
+							])),
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn btn-secondary border'),
+								$elm$html$Html$Attributes$type_('button')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('radio')
+									]),
+								_List_Nil),
+								$elm$html$Html$text('GT')
+							])),
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn btn-secondary border'),
+								$elm$html$Html$Attributes$type_('button')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('radio')
+									]),
+								_List_Nil),
+								$elm$html$Html$text('LMGP')
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('ml-auto border-0')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('form-control'),
+								$elm$html$Html$Attributes$type_('number'),
+								$elm$html$Html$Attributes$placeholder('Items per page')
+							]),
+						_List_Nil)
+					]))
+			]));
+};
+var $elm$html$Html$hr = _VirtualDom_node('hr');
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$html$Html$li = _VirtualDom_node('li');
+var $elm$html$Html$ul = _VirtualDom_node('ul');
+var $author$project$Pages$Ranking$item = function (_v0) {
+	var position = _v0.position;
+	var pilots = _v0.pilots;
+	var classPosition = function () {
+		switch (position) {
+			case 1:
+				return 'first-position';
+			case 2:
+				return 'second-position';
+			case 3:
+				return 'third-position';
+			default:
+				return 'nth-position';
+		}
+	}();
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('col row')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('col-1 h5 text-dark d-flex border border-dark ' + classPosition)
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('m-auto text-center')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$elm$core$String$fromInt(position) + '°')
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('col m-3 d-flex flex-column')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('row')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$img,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('thumbnail mb-2 border rounded'),
+										$elm$html$Html$Attributes$src('https://www.w3schools.com/w3images/avatar2.png')
+									]),
+								_List_Nil),
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('col container')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('row h5')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col-4 text-right')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('Nombre:')
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('holi mundo')
+													]))
+											])),
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('row h5')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col-4 text-right')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('Numero:')
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('.........')
+													]))
+											])),
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('row h5')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col-4 text-right')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('Integrantes:')
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('col')
+													]),
+												_List_fromArray(
+													[
+														A2(
+														$elm$html$Html$ul,
+														_List_Nil,
+														A2(
+															$elm$core$List$map,
+															function (name) {
+																return A2(
+																	$elm$html$Html$li,
+																	_List_Nil,
+																	_List_fromArray(
+																		[
+																			$elm$html$Html$text(name)
+																		]));
+															},
+															pilots))
+													]))
+											]))
+									]))
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('row w-100 mt-auto')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('btn btn-outline-primary w-100')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Mas Detalles')
+									]))
+							]))
+					]))
+			]));
+};
+var $elm$html$Html$p = _VirtualDom_node('p');
+var $author$project$Pages$Ranking$page = A2(
+	$elm$html$Html$div,
+	_List_fromArray(
+		[
+			$elm$html$Html$Attributes$class('mx-2 h-100 container-fluid')
+		]),
+	_List_fromArray(
+		[
+			A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('display-4')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Ranking')
+				])),
+			A2(
+			$elm$html$Html$p,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('lead mx-2')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Mostrando rankings, posicionamiento en la carrera, desde el año /tal/')
+				])),
+			A2(
+			$elm$html$Html$hr,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('bg-light my-2')
+				]),
+			_List_Nil),
+			$author$project$Pages$SearchControl$control(
+			{category: $elm$core$Maybe$Nothing, pagination: $elm$core$Maybe$Nothing, raceType: $elm$core$Maybe$Nothing}),
+			A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('container-fluid mt-4 mx-3')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('row')
+						]),
+					_List_fromArray(
+						[
+							$author$project$Pages$Ranking$item(
+							{
+								pilots: _List_fromArray(
+									['Integrante 1', 'Integrante 2']),
+								position: 1
+							}),
+							$author$project$Pages$Ranking$item(
+							{
+								pilots: _List_fromArray(
+									['Integrante 1', 'Integrante 2', 'Integrante 3']),
+								position: 2
+							})
+						]))
+				]))
+		]));
+var $author$project$Pages$Welcome$reportItem = function (_v0) {
+	var title = _v0.title;
+	var onCommand = _v0.onCommand;
+	var toggle = _v0.toggle;
+	return A2(
+		$elm$html$Html$li,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$a,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$href(
+						'#' + A2($elm$core$Maybe$withDefault, '', toggle)),
+						A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
+						$elm$html$Html$Events$onClick(onCommand)
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(title)
+					]))
+			]));
+};
+var $author$project$Pages$Welcome$page = function (list) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('mx-2 h-100 container-fluid')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('display-4')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Bienvenido')
+					])),
+				A2(
+				$elm$html$Html$p,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('lead mx-2')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Esta es una aplicación de reportaje para "Sistemas de bases de datos 2" basada en la carrera de 24h de Le Mans,\n                                                              recopilando datos desde 1970 hasta 1979.')
+					])),
+				A2(
+				$elm$html$Html$hr,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('bg-light my-2')
+					]),
+				_List_Nil),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('h2')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Reportes')
+					])),
+				A2(
+				$elm$html$Html$p,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mx-2 ')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Se implementaron los primeros 5 reportes de la decena que deben implementarse:')
+					])),
+				A2(
+				$elm$html$Html$ul,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('mx-4 list-group list-group-flush')
+					]),
+				A2($elm$core$List$map, $author$project$Pages$Welcome$reportItem, list))
+			]));
+};
+var $elm$html$Html$form = _VirtualDom_node('form');
+var $elm$html$Html$Attributes$form = _VirtualDom_attribute('form');
 var $elm$svg$Svg$line = $elm$svg$Svg$trustedNode('line');
 var $elm$svg$Svg$Attributes$x1 = _VirtualDom_attribute('x1');
 var $elm$svg$Svg$Attributes$x2 = _VirtualDom_attribute('x2');
@@ -5530,7 +6085,71 @@ var $author$project$Icons$menu = A4(
 				]),
 			_List_Nil)
 		]));
-var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$novalidate = $elm$html$Html$Attributes$boolProperty('noValidate');
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$Events$alwaysPreventDefault = function (msg) {
+	return _Utils_Tuple2(msg, true);
+};
+var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
+	return {$: 'MayPreventDefault', a: a};
+};
+var $elm$html$Html$Events$preventDefaultOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
+	});
+var $elm$html$Html$Events$onSubmit = function (msg) {
+	return A2(
+		$elm$html$Html$Events$preventDefaultOn,
+		'submit',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysPreventDefault,
+			$elm$json$Json$Decode$succeed(msg)));
+};
+var $elm$html$Html$Attributes$pattern = $elm$html$Html$Attributes$stringProperty('pattern');
 var $author$project$Icons$search = A4(
 	$author$project$Icons$svgFeatherIcon,
 	'24',
@@ -5569,106 +6188,18 @@ var $author$project$Navbar$toggler = F2(
 				]),
 			childs);
 	});
-var $author$project$Toolbar$toolbar = A2(
-	$elm$html$Html$nav,
-	_List_fromArray(
-		[
-			$elm$html$Html$Attributes$id('toolbar'),
-			$elm$html$Html$Attributes$class('navbar navbar-dark bg-primary')
-		]),
-	_List_fromArray(
-		[
-			A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('navbar-brand')
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$author$project$Navbar$toggler,
-					'navbar-toggler mx-2 btn',
-					_List_fromArray(
-						[$author$project$Icons$menu])),
-					$elm$html$Html$text('Page Title')
-				])),
-			A2(
-			$elm$html$Html$form,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('form-inline')
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('input-group input-group-lg mt-3')
-						]),
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$input,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$class('form-control'),
-									$elm$html$Html$Attributes$placeholder('Año, e.j 1970')
-								]),
-							_List_Nil),
-							A2(
-							$elm$html$Html$div,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$class('input-group-append')
-								]),
-							_List_fromArray(
-								[
-									A2(
-									$elm$html$Html$button,
-									_List_fromArray(
-										[
-											$elm$html$Html$Attributes$class('btn btn-dark')
-										]),
-									_List_fromArray(
-										[$author$project$Icons$search]))
-								]))
-						]))
-				]))
-		]));
-var $elm$html$Html$hr = _VirtualDom_node('hr');
-var $elm$html$Html$p = _VirtualDom_node('p');
-var $elm$html$Html$li = _VirtualDom_node('li');
-var $author$project$Pages$Welcome$reportItem = function (_v0) {
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Toolbar$toolbar = function (_v0) {
+	var inputChange = _v0.inputChange;
+	var formSubmit = _v0.formSubmit;
+	var inputText = _v0.inputText;
 	var title = _v0.title;
-	var onCommand = _v0.onCommand;
 	return A2(
-		$elm$html$Html$li,
-		_List_Nil,
+		$elm$html$Html$nav,
 		_List_fromArray(
 			[
-				A2(
-				$elm$html$Html$a,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$href('#content'),
-						A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'list'),
-						$elm$html$Html$Events$onClick(onCommand)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text(title)
-					]))
-			]));
-};
-var $elm$html$Html$ul = _VirtualDom_node('ul');
-var $author$project$Pages$Welcome$page = function (list) {
-	return A2(
-		$elm$html$Html$div,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class('mx-2 h-100 container-fluid')
+				$elm$html$Html$Attributes$id('toolbar'),
+				$elm$html$Html$Attributes$class('navbar navbar-dark bg-primary w-100')
 			]),
 		_List_fromArray(
 			[
@@ -5676,63 +6207,82 @@ var $author$project$Pages$Welcome$page = function (list) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('display-4')
+						$elm$html$Html$Attributes$class('navbar-brand')
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Bienvenido')
+						A2(
+						$author$project$Navbar$toggler,
+						'navbar-toggler mx-2 btn',
+						_List_fromArray(
+							[$author$project$Icons$menu])),
+						$elm$html$Html$text(title)
 					])),
 				A2(
-				$elm$html$Html$p,
+				$elm$html$Html$form,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('lead mx-2')
+						$elm$html$Html$Attributes$id('form-year-search'),
+						$elm$html$Html$Attributes$class('form-inline'),
+						$elm$html$Html$Attributes$novalidate(true),
+						$elm$html$Html$Events$onInput(inputChange),
+						$elm$html$Html$Events$onSubmit(
+						formSubmit(inputText))
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Esta es una aplicación de reportaje para "Sistemas de bases de datos 2" basada en la carrera de 24h de Le Mans,\n                                                              recopilando datos desde 1970 hasta 1979.')
-					])),
-				A2(
-				$elm$html$Html$hr,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('bg-dark my-2')
-					]),
-				_List_Nil),
-				A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('h2')
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Reportes')
-					])),
-				A2(
-				$elm$html$Html$p,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('mx-2 ')
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Se implementaron los primeros 5 reportes de la decena que deben implementarse:')
-					])),
-				A2(
-				$elm$html$Html$ul,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('mx-4 list-group list-group-flush')
-					]),
-				A2($elm$core$List$map, $author$project$Pages$Welcome$reportItem, list))
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('form-group'),
+								$elm$html$Html$Attributes$id('form-year-group')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('input-group input-group-lg mt-3')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$input,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('form-control'),
+												$elm$html$Html$Attributes$placeholder('Año, e.j 1970'),
+												$elm$html$Html$Attributes$pattern('197[0-9]'),
+												$elm$html$Html$Attributes$form('form-year-search'),
+												$elm$html$Html$Attributes$value(inputText)
+											]),
+										_List_Nil),
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('input-group-append')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$button,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('btn btn-dark'),
+														$elm$html$Html$Attributes$form('form-year-search'),
+														$elm$html$Html$Attributes$type_('submit')
+													]),
+												_List_fromArray(
+													[$author$project$Icons$search]))
+											]))
+									]))
+							]))
+					]))
 			]));
 };
-var $author$project$Main$viewReport = F2(
-	function (_v0, report) {
-		var options = _v0.options;
-		return $author$project$Pages$Welcome$page(options);
-	});
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -5752,7 +6302,8 @@ var $author$project$Main$view = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$author$project$Toolbar$toolbar,
+						$author$project$Toolbar$toolbar(
+						{formSubmit: $author$project$Main$FormSubmit, inputChange: $author$project$Main$NavTextChanged, inputText: model.searchTextMessage, title: 'Main Page'}),
 						A2(
 						$elm$html$Html$div,
 						_List_fromArray(
@@ -5775,12 +6326,30 @@ var $author$project$Main$view = function (model) {
 										_List_fromArray(
 											[
 												$elm$html$Html$Attributes$class('tab-pane fade'),
-												$elm$html$Html$Attributes$id('content')
+												$elm$html$Html$Attributes$id('home')
 											]),
 										_List_fromArray(
 											[
-												A2($author$project$Main$viewReport, model, model.selectedReport)
-											]))
+												$author$project$Pages$Welcome$page(model.options)
+											])),
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('tab-pane fade'),
+												$elm$html$Html$Attributes$id('ranking')
+											]),
+										_List_fromArray(
+											[$author$project$Pages$Ranking$page])),
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('tab-pane fade'),
+												$elm$html$Html$Attributes$id('hourly-ranking')
+											]),
+										_List_fromArray(
+											[$author$project$Pages$Ranking$page]))
 									]))
 							]))
 					]))

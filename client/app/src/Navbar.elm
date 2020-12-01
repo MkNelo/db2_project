@@ -8,6 +8,7 @@ type alias NavbarItem msg =
     { title : String
     , onCommand : msg
     , icon : Html msg
+    , toggle: Maybe String
     }
 
 toggler: String -> List (Html msg) -> Html msg
@@ -17,10 +18,10 @@ toggler className childs =
            childs
 
 listItem: NavbarItem msg -> Html msg
-listItem { title, icon, onCommand } =
+listItem { title, icon, onCommand, toggle } =
     a [ class "list-group-item list-group-item-action d-flex flex-row align-items-center"
         , attribute "data-parent" "#sidebar" 
-        , href <| "#content"
+        , href <| "#" ++ Maybe.withDefault "" toggle
         , onClick onCommand
         , attribute "data-toggle" "list" 
         , attribute "role" "tab"
